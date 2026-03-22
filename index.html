@@ -1572,7 +1572,12 @@ $('pbtn').addEventListener('click',async()=>{
 
 $('dlbtn').addEventListener('click',()=>{
   if(!pdfUrl)return;
-  const a=document.createElement('a');a.href=pdfUrl;a.download='orienteering_route.pdf';a.click();
+  const isIOS=/iPad|iPhone|iPod/.test(navigator.userAgent);
+  if(isIOS){
+    window.open(pdfUrl,'_blank');
+  }else{
+    const a=document.createElement('a');a.href=pdfUrl;a.download='orienteering_route.pdf';a.click();
+  }
 });
 $('clbtn').addEventListener('click',()=>$('pov').classList.remove('show'));
 
