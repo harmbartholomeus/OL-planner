@@ -1013,7 +1013,7 @@ function genRoute(startPt,km){
       .map(p=>({p, legD:dst(cur,p.ll), ret:dst(p.ll,startPt)}))
       .filter(({p,legD,ret})=>
         totalDist+legD+ret<=hi &&  // fits in budget
-        legD<=km*0.3 &&            // single leg niet meer dan 30% van route
+        legD<=km*0.15 &&            // single leg niet meer dan 30% van route
         legD>=minLeg               // minimaal 200m
       )
       .sort((a,b)=>a.legD-b.legD); // nearest first
