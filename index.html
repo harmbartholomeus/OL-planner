@@ -1323,7 +1323,7 @@ async function buildMapCanvas(cLat,cLon,zoom,W,H,minLat,minLon,maxLat,maxLon,rou
   drawKmGrid(ctx,W,H,proj,minLat,minLon,maxLat,maxLon,scDenom);
 
   // ── ROUTE LINE ──
-  ctx.strokeStyle='#C44B1B';ctx.lineWidth=3.5;ctx.setLineDash([9,6]);ctx.lineJoin='round';
+  ctx.strokeStyle='#C44B1B';ctx.lineWidth=1.5;ctx.setLineDash([6,6]);ctx.lineJoin='round';
   ctx.beginPath();
   routeLLs.forEach((p,i)=>{const{px,py}=proj(p[0],p[1]);i?ctx.lineTo(px,py):ctx.moveTo(px,py);});
   ctx.stroke();ctx.setLineDash([]);
