@@ -219,7 +219,8 @@ input[type=range]{flex:1;accent-color:var(--moss);cursor:pointer;}
         <label>Kaartdetail</label>
         <select id="scsel">
           <option value="auto">Automatisch (beste fit)</option>
-          <option value="4500">Zoom 16 — meest gedetailleerd (~1:8.700)</option>
+          <option value="2200">Zoom 17 — maximaal detail (~1:4.300)</option>
+          <option value="4500">Zoom 16 — zeer gedetailleerd (~1:8.700)</option>
           <option value="17000">Zoom 15 — gedetailleerd (~1:17.000)</option>
           <option value="35000">Zoom 14 — normaal (~1:35.000)</option>
           <option value="70000">Zoom 13 — overzicht (~1:69.000)</option>
@@ -1204,7 +1205,7 @@ $('pbtn').addEventListener('click',async()=>{
       }else{
         ({tileZoom,actualDenom}=bestZoomForTarget(cLat,parseInt(scv)));
       }
-      tileZoom=Math.min(16,Math.max(10,tileZoom));
+      tileZoom=Math.min(17,Math.max(10,tileZoom));
       actualDenom=Math.round(scaleDenomAtZoom(cLat,tileZoom));
 
       // Page coverage in metres = canvas pixels * mPerPx
