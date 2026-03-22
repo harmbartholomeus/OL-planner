@@ -1007,12 +1007,14 @@ function genRoute(startPt,km){
 
   let sel=[],cur=startPt,totalDist=0,rem=pool.slice();
 
+  const minLeg=0.2; // minimaal 200m tussen punten
   while(rem.length){
     const viable=rem
       .map(p=>({p, legD:dst(cur,p.ll), ret:dst(p.ll,startPt)}))
       .filter(({p,legD,ret})=>
         totalDist+legD+ret<=hi &&  // fits in budget
-        legD<=km*0.3               // single leg not more than 30% of route
+        legD<=km*0.3 &&            // single leg niet meer dan 30% van route
+        legD>=minLeg               // minimaal 200m
       )
       .sort((a,b)=>a.legD-b.legD); // nearest first
 
