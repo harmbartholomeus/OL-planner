@@ -1020,7 +1020,7 @@ function genRoute(startPt,km){
 
     if(!viable.length) break;
 
-    const headingHome=totalDist>km*0.5;
+    const headingHome=totalDist>km*0.35;
     let candidates;
     if(headingHome){
       // Pick from points nearest to start (loop closing)
@@ -1030,7 +1030,7 @@ function genRoute(startPt,km){
       candidates=viable.slice(0,4);
     }
 
-    const weights=[4,2,1,1].slice(0,candidates.length);
+    const weights=[6,2,1,1].slice(0,candidates.length);
     const wSum=weights.reduce((a,b)=>a+b,0);
     let rv=rng(s+=1337)*wSum, pick=0;
     for(let i=0;i<candidates.length;i++){rv-=weights[i];if(rv<=0){pick=i;break;}}
@@ -1049,7 +1049,7 @@ function genRoute(startPt,km){
   if(sel.length<1 && pool.length>0) sel.push(pool[0]);
 
   // ── Step 3: 2-opt to remove crossings ────────────────────────────────────
-  if(sel.length>=3) sel=twoOpt(sel,startPt);
+  //if(sel.length>=3) sel=twoOpt(sel,startPt);
 
   // ── Step 4: if too short, insert best nearby point ────────────────────────
   let totalD=routeTotalDist(sel,startPt);
