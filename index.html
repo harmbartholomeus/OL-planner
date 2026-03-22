@@ -1352,17 +1352,24 @@ async function buildMapCanvas(cLat,cLon,zoom,W,H,minLat,minLon,maxLat,maxLon,rou
   ctx.strokeStyle='#fff';ctx.lineWidth=1.5;ctx.stroke();
 
   // ── CP MARKERS ──
-  cpPts.forEach((cp,i)=>{
+    cpPts.forEach((cp,i)=>{
     const{px,py}=proj(cp.ll[0],cp.ll[1]);
-    ctx.beginPath();ctx.arc(px,py,14,0,Math.PI*2);ctx.fillStyle='rgba(255,255,255,.88)';ctx.fill();
-    ctx.beginPath();ctx.arc(px,py,11,0,Math.PI*2);
-    ctx.fillStyle='#C44B1B';ctx.fill();ctx.strokeStyle='#fff';ctx.lineWidth=2;ctx.stroke();
-    ctx.fillStyle='#fff';ctx.font='bold 10px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';
-    ctx.fillText(String(i+1),px,py);
+    const r=12; // straal van het rondje
+    // Transparant rondje met rode rand
+    ctx.beginPath();ctx.arc(px,py,r,0,Math.PI*2);
+    ctx.fillStyle='rgba(255,255,255,0)';ctx.fill(); // volledig transparant
+    ctx.strokeStyle='#C44B1B';ctx.lineWidth=2.5;ctx.stroke();
+    // Nummer net buiten het rondje rechtsboven
+    ctx.font='bold 10px sans-serif';ctx.textAlign='left';ctx.textBaseline='middle';
+    ctx.strokeStyle='rgba(255,255,255,.9)';ctx.lineWidth=3;
+    ctx.strokeText(String(i+1),px+r+2,py-r/2);
+    ctx.fillStyle='#C44B1B';ctx.fillText(String(i+1),px+r+2,py-r/2);
+    // Beschrijving onder het nummer
     const lbl=(cp.desc||'').length>13?(cp.desc||'').slice(0,12)+'…':(cp.desc||'Post '+(i+1));
-    ctx.font='bold 9px sans-serif';ctx.textAlign='left';
-    ctx.strokeStyle='rgba(255,255,255,.88)';ctx.lineWidth=3;
-    ctx.strokeText(lbl,px+15,py+1);ctx.fillStyle='#111';ctx.fillText(lbl,px+15,py+1);
+    ctx.font='9px sans-serif';
+    ctx.strokeStyle='rgba(255,255,255,.9)';ctx.lineWidth=3;
+    ctx.strokeText(lbl,px+r+2,py+r/2);
+    ctx.fillStyle='#111';ctx.fillText(lbl,px+r+2,py+r/2);
   });
 
   return canvas;
