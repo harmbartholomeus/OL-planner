@@ -1013,21 +1013,21 @@ function genRoute(startPt,km){
       .map(p=>({p, legD:dst(cur,p.ll), ret:dst(p.ll,startPt)}))
       .filter(({p,legD,ret})=>
         totalDist+legD+ret<=hi &&  // fits in budget
-        legD<=km*0.15 &&            // single leg niet meer dan 30% van route
+        legD<=km*0.08 &&            // single leg niet meer dan 30% van route
         legD>=minLeg               // minimaal 200m
       )
       .sort((a,b)=>a.legD-b.legD); // nearest first
 
     if(!viable.length) break;
 
-    const headingHome=totalDist>km*0.35;
+    const headingHome=totalDist>km*0.4;
     let candidates;
     if(headingHome){
       // Pick from points nearest to start (loop closing)
-      candidates=[...viable].sort((a,b)=>a.ret-b.ret).slice(0,4);
+      candidates=[...viable].sort((a,b)=>a.ret-b.ret).slice(0,6);
     } else {
       // Pure nearest-neighbour
-      candidates=viable.slice(0,4);
+      candidates=viable.slice(0,6);
     }
 
     const weights=[6,2,1,1].slice(0,candidates.length);
