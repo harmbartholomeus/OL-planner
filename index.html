@@ -1360,13 +1360,13 @@ async function buildMapCanvas(cLat,cLon,zoom,W,H,minLat,minLon,maxLat,maxLon,rou
     ctx.fillStyle='rgba(255,255,255,0)';ctx.fill(); // volledig transparant
     ctx.strokeStyle='#C44B1B';ctx.lineWidth=2.5;ctx.stroke();
     // Nummer net buiten het rondje rechtsboven
-    ctx.font='bold 14px sans-serif';ctx.textAlign='left';ctx.textBaseline='middle';
+    ctx.font='bold 24px sans-serif';ctx.textAlign='left';ctx.textBaseline='middle';
     ctx.strokeStyle='rgba(255,255,255,.9)';ctx.lineWidth=3;
     ctx.strokeText(String(i+1),px+r+2,py-r/2);
     ctx.fillStyle='#C44B1B';ctx.fillText(String(i+1),px+r+2,py-r/2);
     // Beschrijving onder het nummer
     const lbl=(cp.desc||'').length>13?(cp.desc||'').slice(0,12)+'…':(cp.desc||'Post '+(i+1));
-    ctx.font='11px sans-serif';
+    ctx.font='13px sans-serif';
     ctx.strokeStyle='rgba(255,255,255,.9)';ctx.lineWidth=3;
     ctx.strokeText(lbl,px+r+2,py+r/2);
     ctx.fillStyle='#111';ctx.fillText(lbl,px+r+2,py+r/2);
