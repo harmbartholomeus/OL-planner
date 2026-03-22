@@ -1585,8 +1585,8 @@ let communityMarkers=[], addingCommunityPt=false, newPtCoords=null, newPtTempMar
 
 // Laad opgeslagen Supabase config uit localStorage
 try{
-  SB_URL=localStorage.getItem('sb_url')||'';
-  SB_KEY=localStorage.getItem('sb_key')||'';
+  SB_URL=localStorage.getItem('sb_url')||SB_URL;  // gebruik localStorage als beschikbaar, anders hardcoded
+  SB_KEY=localStorage.getItem('sb_key')||SB_KEY;  // idem
   if(SB_URL) $('sb-url').value=SB_URL;
   if(SB_KEY) $('sb-key').value=SB_KEY;
   const savedUser=localStorage.getItem('sb_user');
