@@ -1,0 +1,1525 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Oriëntatieloop Route Planner</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root{--forest:#2D5016;--moss:#4A7C28;--bark:#8B6914;--cream:#F5F0E8;--sand:#E8DFC8;--ink:#1A1A14;--rust:#C44B1B;--accent:#E8A020;--blue:#2a7ab5;}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:'DM Sans',sans-serif;background:var(--ink);color:var(--cream);height:100vh;display:flex;flex-direction:column;overflow:hidden;}
+header{background:var(--forest);padding:9px 18px;display:flex;align-items:center;gap:13px;border-bottom:3px solid var(--moss);flex-shrink:0;}
+header h1{font-family:'Bebas Neue',cursive;font-size:24px;letter-spacing:3px;color:var(--accent);}
+.subtitle{font-size:10px;color:var(--sand);letter-spacing:1px;text-transform:uppercase;opacity:.75;}
+.compass{width:32px;height:32px;border:2px solid var(--accent);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0;}
+.app-body{display:flex;flex:1;overflow:hidden;}
+.sidebar{width:288px;background:#1E2416;border-right:2px solid var(--forest);display:flex;flex-direction:column;overflow-y:auto;flex-shrink:0;}
+.sidebar::-webkit-scrollbar{width:4px}.sidebar::-webkit-scrollbar-thumb{background:var(--moss);border-radius:2px}
+.s{padding:12px 13px;border-bottom:1px solid rgba(74,124,40,.25);}
+.lbl{font-family:'Bebas Neue',cursive;font-size:13px;letter-spacing:2px;color:var(--accent);margin-bottom:7px;display:flex;align-items:center;gap:5px;}
+.bdg{background:var(--rust);color:#fff;border-radius:50%;width:16px;height:16px;font-size:9px;display:flex;align-items:center;justify-content:center;font-family:'DM Sans',sans-serif;font-weight:600;}
+.info{font-size:11px;color:var(--sand);line-height:1.5;opacity:.82;}
+
+/* Upload */
+.dropzone{border:2px dashed var(--moss);border-radius:7px;padding:10px;text-align:center;cursor:pointer;transition:all .2s;position:relative;overflow:hidden;}
+.dropzone:hover{border-color:var(--accent);background:rgba(74,124,40,.1);}
+.dropzone input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;}
+.dropzone.ok{border-color:var(--accent);background:rgba(232,160,32,.07);}
+.dz-icon{font-size:17px;margin-bottom:2px;}.dz-txt{font-size:11px;color:var(--sand);}
+.dz-st{font-size:11px;color:var(--accent);margin-top:3px;font-weight:600;}
+.pill{display:inline-block;background:rgba(74,124,40,.2);border:1px solid var(--moss);border-radius:4px;padding:2px 7px;font-size:10px;color:var(--cream);margin-top:3px;}
+
+/* Mode toggle */
+.mode-row{display:flex;gap:5px;margin-bottom:8px;}
+.mode-btn{flex:1;padding:6px 4px;border:1px solid var(--moss);border-radius:5px;background:transparent;color:var(--sand);font-size:10px;font-family:'DM Sans',sans-serif;font-weight:600;cursor:pointer;transition:all .2s;text-align:center;}
+.mode-btn.active{background:var(--moss);color:#fff;border-color:var(--moss);}
+.mode-btn.active-blue{background:var(--blue);color:#fff;border-color:var(--blue);}
+
+.startbox{background:rgba(74,124,40,.14);border:1px solid var(--moss);border-radius:5px;padding:6px 9px;font-size:11px;color:var(--cream);min-height:30px;display:flex;align-items:center;gap:5px;}
+.dot{width:8px;height:8px;background:var(--rust);border-radius:50%;flex-shrink:0;animation:pulse 2s infinite;}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(1.4)}}
+.slrow{display:flex;align-items:center;gap:7px;margin-top:5px;}
+input[type=range]{flex:1;accent-color:var(--moss);cursor:pointer;}
+.slval{font-family:'Bebas Neue',cursive;font-size:18px;color:var(--accent);min-width:52px;text-align:right;}
+.btn{display:block;width:100%;padding:7px;border:none;border-radius:5px;font-family:'Bebas Neue',cursive;font-size:13px;letter-spacing:2px;cursor:pointer;transition:all .2s;margin-top:5px;}
+.btn-g{background:var(--moss);color:#fff;}.btn-g:hover{background:#3a6320;transform:translateY(-1px);}.btn-g:disabled{opacity:.38;cursor:not-allowed;transform:none;}
+.btn-b{background:var(--bark);color:#fff;}.btn-b:hover{background:#6B520F;transform:translateY(-1px);}.btn-b:disabled{opacity:.38;cursor:not-allowed;transform:none;}
+.btn-r{background:var(--rust);color:#fff;margin-top:4px;}.btn-r:hover{background:#a33515;transform:translateY(-1px);}
+.btn-blue{background:var(--blue);color:#fff;}.btn-blue:hover{background:#1e5f8a;transform:translateY(-1px);}
+
+/* Manual pts list */
+.manual-list{list-style:none;margin-top:5px;max-height:120px;overflow-y:auto;}
+.manual-item{display:flex;align-items:center;gap:5px;padding:3px 0;border-bottom:1px solid rgba(255,255,255,.06);font-size:11px;}
+.manual-num{width:17px;height:17px;background:var(--blue);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:#fff;flex-shrink:0;}
+.manual-del{background:none;border:none;color:var(--rust);cursor:pointer;font-size:13px;padding:0 3px;flex-shrink:0;}
+
+.stats{display:flex;gap:6px;margin-bottom:7px;}
+.sb{flex:1;background:rgba(74,124,40,.12);border:1px solid rgba(74,124,40,.35);border-radius:5px;padding:6px;text-align:center;}
+.sv{font-family:'Bebas Neue',cursive;font-size:17px;color:var(--accent);}
+.sk{font-size:9px;color:var(--sand);text-transform:uppercase;letter-spacing:1px;}
+.cpl{list-style:none;}
+.cpi{display:flex;align-items:center;gap:6px;padding:4px 0;border-bottom:1px solid rgba(255,255,255,.05);font-size:11px;}
+.cpn{width:18px;height:18px;background:var(--rust);border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:9px;flex-shrink:0;color:#fff;}
+.cpn.st{background:var(--forest);border:2px solid var(--accent);}
+.cpd{flex:1;color:var(--cream);}.cpc{font-family:'Bebas Neue',cursive;font-size:13px;color:var(--accent);width:16px;text-align:center;}
+.ans{background:rgba(74,124,40,.09);border:1px solid rgba(74,124,40,.25);border-radius:5px;padding:8px;margin-top:4px;}
+.anr{display:flex;align-items:center;gap:6px;margin-bottom:3px;font-size:11px;}
+.ann{width:15px;height:15px;background:var(--rust);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;flex-shrink:0;color:#fff;}
+.anb{width:24px;height:18px;border:1px solid var(--moss);border-radius:3px;background:rgba(0,0,0,.3);}
+.and{flex:1;color:var(--sand);}
+
+/* PDF options */
+.row2{display:flex;gap:6px;margin-top:5px;}
+.row2 select{flex:1;background:#2A3320;border:1px solid var(--moss);color:var(--cream);padding:5px 6px;border-radius:4px;font-family:'DM Sans',sans-serif;font-size:11px;cursor:pointer;}
+.row2 label{font-size:10px;color:var(--sand);display:block;margin-bottom:2px;opacity:.8;}
+
+#map{flex:1;cursor:crosshair;}
+.map-mode-start #map{cursor:crosshair;}
+.map-mode-manual #map{cursor:cell;}
+.hint{position:absolute;bottom:24px;left:50%;transform:translateX(-50%);background:rgba(26,26,20,.9);color:var(--cream);padding:6px 14px;border-radius:16px;font-size:11px;border:1px solid var(--moss);z-index:1000;pointer-events:none;transition:opacity .3s;white-space:nowrap;}
+.hidden{display:none!important;}
+
+#lov{display:none;position:fixed;inset:0;background:rgba(0,0,0,.80);z-index:9998;flex-direction:column;align-items:center;justify-content:center;gap:11px;}
+#lov.show{display:flex;}
+.spin{width:42px;height:42px;border:4px solid rgba(74,124,40,.3);border-top-color:var(--moss);border-radius:50%;animation:sp 1s linear infinite;}
+@keyframes sp{to{transform:rotate(360deg)}}
+#ltxt{color:var(--cream);font-size:12px;max-width:300px;text-align:center;}
+#lprog{width:260px;height:5px;background:rgba(74,124,40,.2);border-radius:3px;overflow:hidden;}
+#lbar{height:100%;background:var(--moss);border-radius:3px;transition:width .25s;width:0%;}
+#pov{display:none;position:fixed;inset:0;background:rgba(0,0,0,.90);z-index:9999;flex-direction:column;align-items:center;justify-content:center;gap:11px;}
+#pov.show{display:flex;}
+#pcanv{border:3px solid var(--moss);max-height:82vh;max-width:93vw;background:#fff;}
+.obt{display:flex;gap:9px;}
+.ob{padding:8px 20px;border:none;border-radius:5px;font-family:'Bebas Neue',cursive;font-size:13px;letter-spacing:2px;cursor:pointer;transition:all .2s;}
+.ob.dl{background:var(--moss);color:#fff;}.ob.cl{background:#444;color:#fff;}.ob:hover{transform:translateY(-2px);}
+</style>
+</head>
+<body>
+<header>
+  <div class="compass">🧭</div>
+  <div>
+    <h1>Oriëntatieloop Planner</h1>
+    <div class="subtitle">Klik · Kies afstand · Download route</div>
+  </div>
+</header>
+
+<div class="app-body" id="appbody">
+<div class="sidebar">
+
+  <!-- Data -->
+  <div class="s">
+    <div class="lbl">📂 Postenpunten</div>
+    <div class="dropzone" id="dz">
+      <input type="file" id="xin" accept=".xlsx,.xls">
+      <div class="dz-icon">📊</div>
+      <div class="dz-txt">Upload .xlsx<br><span style="opacity:.5;font-size:10px">CP · X · Y · beschrijving · check</span></div>
+    </div>
+    <div class="dz-st" id="dzs"></div>
+    <div id="pcount"></div>
+  </div>
+
+  <!-- Zoekbalk -->
+  <div class="s">
+    <div class="lbl">🔍 Zoek locatie</div>
+    <div style="display:flex;gap:5px;">
+      <input type="text" id="search-input" placeholder="Plaatsnaam, adres…"
+        style="flex:1;background:#2A3320;border:1px solid var(--moss);color:var(--cream);
+               padding:6px 8px;border-radius:4px;font-family:'DM Sans',sans-serif;font-size:12px;outline:none;">
+      <button id="search-btn"
+        style="background:var(--moss);border:none;border-radius:4px;padding:6px 10px;
+               color:white;cursor:pointer;font-size:13px;" title="Zoeken">→</button>
+    </div>
+    <div id="search-results" style="margin-top:4px;"></div>
+  </div>
+
+  <!-- Mode -->
+  <div class="s">
+    <div class="lbl">Modus</div>
+    <div class="mode-row">
+      <button class="mode-btn active" id="mode-auto" title="Automatisch route genereren van xlsx-punten">🗂 Automatisch</button>
+      <button class="mode-btn" id="mode-manual" title="Zelf punten aanklikken op de kaart">🖱 Handmatig</button>
+    </div>
+    <p class="info" id="mode-info">Punten uit xlsx, route automatisch gegenereerd.</p>
+  </div>
+
+  <!-- Map layer toggle -->
+  <div class="s">
+    <div class="lbl">Kaartlaag</div>
+    <div class="mode-row">
+      <button class="mode-btn active" id="layer-topo" title="Topografische kaart (OpenTopoMap)">🗺 Topo</button>
+      <button class="mode-btn" id="layer-aerial" title="Luchtfoto 2024 (PDOK, CC-BY 4.0)">🛩 Luchtfoto</button>
+    </div>
+    <p class="info" id="layer-info" style="opacity:.6">OpenTopoMap (CC-BY-SA)</p>
+  </div>
+
+  <!-- Step 1: Start -->
+  <div class="s">
+    <div class="lbl"><span class="bdg">1</span> Startlocatie</div>
+    <p class="info" style="margin-bottom:6px" id="start-hint-txt">Klik op de kaart voor het startpunt.</p>
+    <div class="startbox"><div class="dot"></div><span id="stxt">Nog geen startpunt gekozen</span></div>
+  </div>
+
+  <!-- Step 2: Distance (auto only) -->
+  <div class="s" id="dist-section">
+    <div class="lbl"><span class="bdg">2</span> Afstand</div>
+    <div class="slrow">
+      <input type="range" id="dsl" min="1" max="100" value="5" step="1">
+      <div class="slval"><span id="dv">5</span> km</div>
+    </div>
+    <p class="info" style="margin-top:4px">Selecteert posten voor ~<span id="dh">5</span> km.</p>
+  </div>
+
+  <!-- Manual points list (manual only) -->
+  <div class="s hidden" id="manual-section">
+    <div class="lbl"><span class="bdg">2</span> Punten</div>
+    <p class="info" style="margin-bottom:5px">Klik op de kaart om punten toe te voegen. Startpunt is al ingesteld.</p>
+    <ul class="manual-list" id="manual-list"></ul>
+    <div style="margin-top:5px;font-size:10px;color:var(--sand);opacity:.7;" id="manual-dist-info"></div>
+    <!-- Save / Load manual points -->
+    <div style="display:flex;gap:5px;margin-top:8px;">
+      <button class="btn btn-b" id="save-manual-btn" style="flex:1;font-size:11px;padding:6px;margin-top:0" title="Sla handmatige punten op als CSV">💾 Opslaan CSV</button>
+      <label class="btn btn-b" style="flex:1;font-size:11px;padding:6px;margin-top:0;text-align:center;cursor:pointer;" title="Laad eerder opgeslagen handmatige punten">📂 Laden CSV<input type="file" id="load-manual-input" accept=".csv,.xlsx,.xls" style="display:none"></label>
+    </div>
+  </div>
+
+  <!-- Step 3: Generate / Confirm -->
+  <div class="s">
+    <div class="lbl"><span class="bdg" id="step3-num">3</span> <span id="step3-lbl">Genereer Route</span></div>
+    <button class="btn btn-g" id="gbtn" disabled>🗺 Genereer Route</button>
+    <button class="btn btn-g" id="reshuf" style="display:none;background:#3d6b1a;">🔀 Andere Volgorde</button>
+    <button class="btn btn-blue" id="confirm-manual" style="display:none">✓ Bevestig Route</button>
+    <button class="btn btn-g" id="reshuf-manual" style="display:none;background:#1a5a8a;">🔀 Andere Volgorde</button>
+    <button class="btn btn-r hidden" id="rbtn">↺ Reset</button>
+  </div>
+
+  <!-- Route results -->
+  <div class="s hidden" id="rtsec">
+    <div class="lbl">📍 Route</div>
+    <div class="stats">
+      <div class="sb"><div class="sv" id="sdist">–</div><div class="sk">km totaal</div></div>
+      <div class="sb"><div class="sv" id="scps">–</div><div class="sk">posten</div></div>
+    </div>
+    <ul class="cpl" id="cpl"></ul>
+  </div>
+
+  <!-- Answer sheet -->
+  <div class="s hidden" id="ansec">
+    <div class="lbl">✏️ Invulblad</div>
+    <p class="info" style="margin-bottom:4px">Schrijf de gevonden letters op.</p>
+    <div class="ans" id="ansh"></div>
+  </div>
+
+  <!-- PDF Export -->
+  <div class="s hidden" id="pdfsec">
+    <div class="lbl">📄 PDF Export</div>
+    <div class="row2">
+      <div style="flex:1">
+        <label>Papierformaat</label>
+        <select id="pformat">
+          <option value="a4l">A4 liggend</option>
+          <option value="a4p">A4 staand</option>
+          <option value="a3l">A3 liggend</option>
+          <option value="a3p">A3 staand</option>
+          <option value="multi">Meerdere A4's</option>
+        </select>
+      </div>
+      <div style="flex:1">
+        <label>Kaartdetail</label>
+        <select id="scsel">
+          <option value="auto">Automatisch (beste fit)</option>
+          <option value="2200">Zoom 17 — maximaal detail (~1:4.300)</option>
+          <option value="4500">Zoom 16 — zeer gedetailleerd (~1:8.700)</option>
+          <option value="17000">Zoom 15 — gedetailleerd (~1:17.000)</option>
+          <option value="35000">Zoom 14 — normaal (~1:35.000)</option>
+          <option value="70000">Zoom 13 — overzicht (~1:69.000)</option>
+          <option value="140000">Zoom 12 — groot gebied (~1:138.000)</option>
+        </select>
+      </div>
+    </div>
+    <button class="btn btn-b" id="pbtn">⬇ Genereer PDF</button>
+  </div>
+
+</div><!-- /sidebar -->
+
+<div id="map"></div>
+<div class="hint" id="hint">👆 Klik op de kaart om het startpunt te kiezen</div>
+</div><!-- /app-body -->
+
+<div id="lov"><div class="spin"></div><div id="ltxt">Bezig…</div><div id="lprog"><div id="lbar"></div></div></div>
+<div id="pov">
+  <canvas id="pcanv"></canvas>
+  <div class="obt">
+    <button class="ob dl" id="dlbtn">⬇ Download PDF</button>
+    <button class="ob cl" id="clbtn">✕ Sluiten</button>
+  </div>
+</div>
+
+<script>
+'use strict';
+const $=id=>document.getElementById(id);
+
+// ── DEFAULT DATA ──────────────────────────────────────────────────────────────
+const DEFAULT_PTS=[
+  {cp:1,x:166989,y:442213,desc:"hek",check:"N"},
+  {cp:2,x:166720,y:442823,desc:"bank",check:"A"},
+  {cp:3,x:166419,y:442393,desc:"boom",check:"Y"},
+  {cp:4,x:166125,y:443177,desc:"klimrek",check:"G"},
+  {cp:5,x:165976,y:442890,desc:"paal",check:"P"},
+  {cp:6,x:167057,y:441717,desc:"schommel",check:"R"},
+  {cp:7,x:166624,y:442175,desc:"geel paaltje",check:"Z"},
+  {cp:8,x:167091,y:442683,desc:"hek",check:"C"},
+  {cp:9,x:166252,y:444480,desc:"hek",check:"M"},
+  {cp:10,x:165278,y:444434,desc:"klaphek",check:"W"},
+  {cp:11,x:166529,y:441959,desc:"poort",check:"U"},
+  {cp:12,x:165917,y:443012,desc:"grafheuvelbord",check:"I"},
+  {cp:13,x:166895,y:441298,desc:"poort",check:"Y"},
+  {cp:14,x:166527,y:441174,desc:"bordje",check:"M"},
+  {cp:15,x:166926,y:440838,desc:"hutje",check:"R"},
+  {cp:16,x:167055,y:440982,desc:"bankje",check:"P"},
+  {cp:17,x:167363,y:440674,desc:"paal",check:"W"},
+  {cp:18,x:167628,y:440904,desc:"uitkijkpunt",check:"Z"},
+  {cp:19,x:168027,y:440572,desc:"pilaar oostkant",check:"U"},
+  {cp:20,x:168856,y:440664,desc:"halverwege trap",check:"B"},
+  {cp:21,  x:167442, y:441467, desc:"Post 1",  check:"?"},
+  {cp:22,  x:167784, y:442172, desc:"Post 2",  check:"?"},
+  {cp:23,  x:167573, y:442808, desc:"Post 3",  check:"?"},
+  {cp:24,  x:168142, y:442608, desc:"Post 4",  check:"?"},
+  {cp:25,  x:168703, y:442201, desc:"Post 5",  check:"?"},
+  {cp:26,  x:168735, y:441883, desc:"Post 6",  check:"?"},
+  {cp:27,  x:168771, y:441585, desc:"Post 7",  check:"?"},
+  {cp:28,  x:168913, y:441648, desc:"Post 8",  check:"?"},
+  {cp:29,  x:169344, y:441367, desc:"Post 9",  check:"?"},
+  {cp:30,  x:169917, y:441134, desc:"Post 10", check:"?"},
+  {cp:31,  x:169371, y:440949, desc:"Post 11", check:"?"},
+  {cp:32,  x:169194, y:441171, desc:"Post 12", check:"?"},
+  {cp:33,  x:168937, y:441359, desc:"Post 13", check:"?"},
+  {cp:34,  x:168573, y:441241, desc:"Post 14", check:"?"},
+  {cp:35,  x:168845, y:440339, desc:"Post 15", check:"?"},
+  {cp:36,  x:168792, y:440401, desc:"Post 16", check:"?"},
+  {cp:37,  x:169686, y:440399, desc:"Post 17", check:"?"},
+  {cp:38,  x:170082, y:440520, desc:"Post 18", check:"?"},
+  {cp:39,  x:169501, y:440647, desc:"Post 19", check:"?"},
+  {cp:40,  x:169009, y:440237, desc:"Post 20", check:"?"},
+  {cp:41,  x:169028, y:440292, desc:"Post 21", check:"?"},
+  {cp:42,  x:168286, y:440540, desc:"Post 22", check:"?"},
+  {cp:43,  x:167656, y:440623, desc:"Post 23", check:"?"},
+  {cp:44,  x:167335, y:441163, desc:"Post 24", check:"?"},
+  {cp:45,  x:167222, y:441394, desc:"Post 25", check:"?"},
+  {cp:46,  x:167171, y:441467, desc:"Post 26", check:"?"},
+  {cp:47,  x:167137, y:441567, desc:"Post 27", check:"?"},
+  {cp:48,  x:166922, y:442104, desc:"Post 28", check:"?"},
+  {cp:49,  x:166819, y:442202, desc:"Post 29", check:"?"},
+  {cp:50,  x:166584, y:443817, desc:"Post 30", check:"?"},
+  {cp:51,  x:166668, y:443791, desc:"Post 31", check:"?"},
+  {cp:52,  x:166613, y:444273, desc:"Post 32", check:"?"},
+  {cp:53,  x:166464, y:444967, desc:"Post 33", check:"?"},
+  {cp:54,  x:165759, y:444894, desc:"Post 34", check:"?"},
+  {cp:55,  x:165800, y:443907, desc:"Post 35", check:"?"},
+  {cp:56,  x:165622, y:443869, desc:"Post 36", check:"?"},
+  {cp:57,  x:166141, y:443927, desc:"Post 37", check:"?"},
+  {cp:58,  x:165979, y:444394, desc:"Post 38", check:"?"},
+  {cp:59,  x:165417, y:444793, desc:"Post 39", check:"?"},
+  {cp:60,  x:169044, y:441901, desc:"Post 40", check:"?"},
+  {cp:61,  x:170280, y:441053, desc:"Post 41", check:"?"},
+  {cp:62,  x:170549, y:441540, desc:"Post 42", check:"?"},
+  {cp:63,  x:170871, y:441992, desc:"Post 43", check:"?"},
+  {cp:64,  x:169812, y:441854, desc:"Post 44", check:"?"},
+  {cp:65,  x:169335, y:441561, desc:"Post 45", check:"?"},
+  {cp:66,  x:168208, y:441267, desc:"Post 46", check:"?"},
+  {cp:67,  x:168077, y:441023, desc:"Post 47", check:"?"},
+  {cp:68,  x:167733, y:440976, desc:"Post 48", check:"?"},
+  {cp:69,  x:167222, y:440972, desc:"Post 49", check:"?"},
+  {cp:70,  x:167174, y:440941, desc:"Post 50", check:"?"},
+  {cp:71,  x:174432, y:443947, desc:"Post 1",  check:"?"},
+  {cp:72,  x:174351, y:444145, desc:"Post 2",  check:"?"},
+  {cp:73,  x:174283, y:444167, desc:"Post 3",  check:"?"},
+  {cp:74,  x:174346, y:444315, desc:"Post 4",  check:"?"},
+  {cp:75,  x:174133, y:444235, desc:"Post 5",  check:"?"},
+  {cp:76,  x:174045, y:444093, desc:"Post 6",  check:"?"},
+  {cp:77,  x:173946, y:444139, desc:"Post 7",  check:"?"},
+  {cp:78,  x:173772, y:444277, desc:"Post 8",  check:"?"},
+  {cp:79,  x:173838, y:444126, desc:"Post 9",  check:"?"},
+  {cp:80,  x:173773, y:444008, desc:"Post 10", check:"?"},
+  {cp:81,  x:173578, y:444082, desc:"Post 11", check:"?"},
+  {cp:82,  x:173602, y:443902, desc:"Post 12", check:"?"},
+  {cp:83,  x:173816, y:443907, desc:"Post 13", check:"?"},
+  {cp:84,  x:173988, y:443991, desc:"Post 14", check:"?"},
+  {cp:85,  x:251489, y:558744, desc:"Post 1",  check:"?"},
+  {cp:86,  x:251323, y:557666, desc:"Post 2",  check:"?"},
+  {cp:87,  x:251688, y:557722, desc:"Post 3",  check:"?"},
+  {cp:88,  x:252255, y:556520, desc:"Post 4",  check:"?"},
+  {cp:89,  x:252651, y:556633, desc:"Post 5",  check:"?"},
+  {cp:90,  x:253289, y:556992, desc:"Post 6",  check:"?"},
+  {cp:91,  x:253999, y:557319, desc:"Post 7",  check:"?"},
+  {cp:92,  x:254022, y:557594, desc:"Post 8",  check:"?"},
+  {cp:93,  x:252891, y:557235, desc:"Post 9",  check:"?"},
+  {cp:94,  x:108540, y:503333, desc:"Post 1",  check:"?"},
+  {cp:95,  x:108168, y:503401, desc:"Post 2",  check:"?"},
+  {cp:96,  x:107884, y:503500, desc:"Post 3",  check:"?"},
+  {cp:97,  x:107741, y:503520, desc:"Post 4",  check:"?"},
+  {cp:98,  x:107706, y:503765, desc:"Post 5",  check:"?"},
+  {cp:99,  x:107551, y:503410, desc:"Post 6",  check:"?"},
+  {cp:100, x:107696, y:503350, desc:"Post 7",  check:"?"},
+  {cp:101, x:107762, y:503061, desc:"Post 8",  check:"?"},
+  {cp:102, x:108604, y:502991, desc:"Post 9",  check:"?"},
+  {cp:103, x:108514, y:503131, desc:"Post 10", check:"?"},
+  {cp:104, x:108817, y:502752, desc:"Post 11", check:"?"},
+  {cp:105, x:109000, y:502980, desc:"Post 12", check:"?"},
+  {cp:106, x:109139, y:503281, desc:"Post 13", check:"?"},
+  {cp:107, x:108998, y:503237, desc:"Post 14", check:"?"},
+  {cp:108, x:108898, y:502887, desc:"Post 15", check:"?"},
+  {cp:109, x:108764, y:502789, desc:"Post 16", check:"?"},
+  {cp:110, x:108795, y:502939, desc:"Post 17", check:"?"},
+  {cp:111, x:108817, y:503111, desc:"Post 18", check:"?"},
+  {cp:112, x:131726, y:447886, desc:"Post 1",  check:"?"},
+  {cp:113, x:131397, y:447742, desc:"Post 2",  check:"?"},
+  {cp:114, x:131180, y:447920, desc:"Post 3",  check:"?"},
+  {cp:115, x:131321, y:448112, desc:"Post 4",  check:"?"},
+  {cp:116, x:131004, y:448410, desc:"Post 5",  check:"?"},
+  {cp:117, x:131213, y:448337, desc:"Post 6",  check:"?"},
+  {cp:118, x:130688, y:448027, desc:"Post 7",  check:"?"},
+  {cp:119, x:130882, y:447901, desc:"Post 8",  check:"?"},
+  {cp:120, x:130559, y:448516, desc:"Post 9",  check:"?"},
+  {cp:121, x:130470, y:448618, desc:"Post 10", check:"?"},
+  {cp:122, x:131096, y:448853, desc:"Post 11", check:"?"},
+  {cp:123, x:130857, y:448896, desc:"Post 12", check:"?"},
+  {cp:124, x:131580, y:449039, desc:"Post 13", check:"?"},
+  {cp:125, x:131727, y:448998, desc:"Post 14", check:"?"},
+  {cp:126, x:132142, y:449025, desc:"Post 15", check:"?"},
+  {cp:127, x:131968, y:449377, desc:"Post 16", check:"?"},
+  {cp:128, x:132288, y:449249, desc:"Post 17", check:"?"},
+  {cp:129, x:132706, y:449252, desc:"Post 18", check:"?"},
+  {cp:130, x:132721, y:448838, desc:"Post 19", check:"?"},
+  {cp:131, x:132561, y:448472, desc:"Post 20", check:"?"},
+  {cp:132, x:132377, y:448089, desc:"Post 21", check:"?"},
+  {cp:133, x:131906, y:448351, desc:"Post 22", check:"?"},
+  {cp:134, x:131613, y:448690, desc:"Post 23", check:"?"},
+  {cp:135, x:132387, y:447903, desc:"Post 24", check:"?"},
+  {cp:136, x:131830, y:447238, desc:"Post 25", check:"?"},
+  {cp:137, x:131579, y:447444, desc:"Post 26", check:"?"},
+  {cp:138, x:131666, y:447665, desc:"Post 27", check:"?"},
+  {cp:139, x:93978,  y:444617, desc:"Post 1",  check:"?"},
+  {cp:140, x:93777,  y:444889, desc:"Post 2",  check:"?"},
+  {cp:141, x:94119,  y:445159, desc:"Post 3",  check:"?"},
+  {cp:142, x:94463,  y:445501, desc:"Post 4",  check:"?"},
+  {cp:143, x:93617,  y:445920, desc:"Post 5",  check:"?"},
+  {cp:144, x:93111,  y:445822, desc:"Post 6",  check:"?"},
+  {cp:145, x:92966,  y:445387, desc:"Post 7",  check:"?"},
+  {cp:146, x:92876,  y:445088, desc:"Post 8",  check:"?"},
+  {cp:147, x:92489,  y:444582, desc:"Post 9",  check:"?"},
+  {cp:148, x:92486,  y:444378, desc:"Post 10", check:"?"},
+  {cp:149, x:92747,  y:444133, desc:"Post 11", check:"?"},
+  {cp:150, x:93358,  y:444309, desc:"Post 12", check:"?"},
+  {cp:151, x:94036,  y:444241, desc:"Post 13", check:"?"},
+  {cp:152, x:94170,  y:444211, desc:"Post 14", check:"?"},
+  {cp:153, x:94840,  y:443897, desc:"Post 15", check:"?"},
+  {cp:154, x:95044,  y:444186, desc:"Post 16", check:"?"},
+  {cp:155, x:94699,  y:443921, desc:"Post 17", check:"?"},
+  {cp:156, x:94332,  y:444682, desc:"Post 18", check:"?"},
+];
+let CPS=DEFAULT_PTS.map(p=>({...p}));
+
+// ── COORD CONVERSIONS ─────────────────────────────────────────────────────────
+function rd2wgs(x,y){
+  const dX=(x-155000)/1e5,dY=(y-463000)/1e5;
+  const N=(3235.65389*dY)+(-32.58297*dX**2)+(-0.2475*dY**2)+(-0.84978*dX**2*dY)
+    +(-0.0655*dY**3)+(-0.01709*dX**2*dY**2)+(-0.00738*dX)+(0.0053*dX**4)
+    +(-0.00039*dX**2*dY**3)+(0.00033*dX**4*dY)+(-0.00012*dX*dY);
+  const E=(5260.52916*dX)+(105.94684*dX*dY)+(2.45656*dX*dY**2)+(-0.81885*dX**3)
+    +(0.05594*dX*dY**3)+(-0.05607*dX**3*dY)+(0.01199*dY)+(-0.00256*dX**3*dY**2)
+    +(0.00128*dX*dY**4)+(0.00022*dY**2)+(-0.00022*dX**2)+(0.00026*dX**5);
+  return[52.15517440+N/3600,5.38720621+E/3600];
+}
+function wgs2rd(lat,lon){
+  const dLat=0.36*(lat-52.15517440),dLon=0.36*(lon-5.38720621);
+  const X=155000+(190094.945*dLon)+(-11832.228*dLon*dLat)+(-114.221*dLon*dLat**2)+(-32.391*dLon**3)+(-0.705*dLat);
+  const Y=463000+(309056.544*dLat)+(3638.893*dLon**2)+(73.077*dLat**2)+(-157.984*dLon**2*dLat)+(59.788*dLat**3);
+  return[X,Y];
+}
+function hav(a,b,c,d){
+  const R=6371,dL=(c-a)*Math.PI/180,dO=(d-b)*Math.PI/180;
+  const x=Math.sin(dL/2)**2+Math.cos(a*Math.PI/180)*Math.cos(c*Math.PI/180)*Math.sin(dO/2)**2;
+  return R*2*Math.atan2(Math.sqrt(x),Math.sqrt(1-x));
+}
+const dst=(p,q)=>hav(p[0],p[1],q[0],q[1]);
+
+// ── MAP ───────────────────────────────────────────────────────────────────────
+let cpLL=CPS.map(cp=>rd2wgs(cp.x,cp.y));
+const map=L.map('map');
+
+// Layer 1: OpenTopoMap (default, CORS-enabled for PDF export)
+const topoLayer=L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',{
+  subdomains:['a','b','c'],
+  attribution:'© <a href="https://openstreetmap.org/copyright">OpenStreetMap</a> | © <a href="https://opentopomap.org">OpenTopoMap</a> (CC-BY-SA)',
+  maxZoom:17,
+}).addTo(map);
+
+// Layer 2: PDOK Luchtfoto 2024 (25cm ortho, CC-BY 4.0)
+// PDOK WMTS in EPSG:3857 (Web Mercator) — works directly in Leaflet
+const aerialLayer=L.tileLayer(
+  'https://service.pdok.nl/hwh/luchtfotorgb/wmts/v1_0?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0'+
+  '&LAYER=Actueel_ortho25&STYLE=default&TILEMATRIXSET=EPSG:3857'+
+  '&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}&FORMAT=image/jpeg',
+  {
+    attribution:'Luchtfoto 2024 © <a href="https://www.kadaster.nl">Kadaster</a> / PDOK (CC-BY 4.0)',
+    maxZoom:19,
+    minZoom:6,
+  }
+);
+
+let activeLayer='topo';
+
+$('layer-topo').addEventListener('click',()=>{
+  if(activeLayer==='topo') return;
+  map.removeLayer(aerialLayer);
+  topoLayer.addTo(map);
+  activeLayer='topo';
+  $('layer-topo').className='mode-btn active';
+  $('layer-aerial').className='mode-btn';
+  $('layer-info').textContent='OpenTopoMap (CC-BY-SA)';
+});
+
+$('layer-aerial').addEventListener('click',()=>{
+  if(activeLayer==='aerial') return;
+  map.removeLayer(topoLayer);
+  aerialLayer.addTo(map);
+  activeLayer='aerial';
+  $('layer-aerial').className='mode-btn active-blue';
+  $('layer-topo').className='mode-btn';
+  $('layer-info').textContent='PDOK Luchtfoto 2024, 25cm (CC-BY 4.0)';
+});
+
+// ── PLAATSNAAM ZOEKEN (Nominatim / OpenStreetMap) ─────────────────────────────
+async function searchLocation(query){
+  if(!query.trim()) return;
+  const res=$('search-results');
+  res.innerHTML='<span style="font-size:11px;color:var(--sand)">Zoeken…</span>';
+  try{
+    const url=`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&countrycodes=nl&limit=5&format=json`;
+    const data=await fetch(url,{headers:{'Accept-Language':'nl'}}).then(r=>r.json());
+    if(!data.length){
+      res.innerHTML='<span style="font-size:11px;color:var(--rust)">Niets gevonden</span>';
+      return;
+    }
+    res.innerHTML='';
+    data.forEach(item=>{
+      const btn=document.createElement('button');
+      btn.textContent=item.display_name.split(',').slice(0,3).join(', ');
+      btn.style.cssText='display:block;width:100%;text-align:left;background:rgba(74,124,40,.15);'+
+        'border:1px solid rgba(74,124,40,.3);border-radius:4px;color:var(--cream);'+
+        'padding:4px 7px;margin-top:3px;font-size:11px;cursor:pointer;font-family:"DM Sans",sans-serif;';
+      btn.onmouseover=()=>btn.style.background='rgba(74,124,40,.35)';
+      btn.onmouseout=()=>btn.style.background='rgba(74,124,40,.15)';
+      btn.addEventListener('click',()=>{
+        map.fitBounds([
+          [parseFloat(item.boundingbox[0]),parseFloat(item.boundingbox[2])],
+          [parseFloat(item.boundingbox[1]),parseFloat(item.boundingbox[3])]
+        ],{maxZoom:15});
+        res.innerHTML='';
+        $('search-input').value='';
+      });
+      res.appendChild(btn);
+    });
+  }catch(e){
+    res.innerHTML='<span style="font-size:11px;color:var(--rust)">Fout bij zoeken</span>';
+  }
+}
+
+$('search-btn').addEventListener('click',()=>searchLocation($('search-input').value));
+$('search-input').addEventListener('keydown',e=>{if(e.key==='Enter') searchLocation($('search-input').value);});
+// Close results when clicking on the map
+map.on('click',()=>{ $('search-results').innerHTML=''; });
+
+function dataBounds(lls){
+  lls=lls||cpLL;
+  const lats=lls.map(p=>p[0]),lons=lls.map(p=>p[1]);
+  return[[Math.min(...lats)-.003,Math.min(...lons)-.005],[Math.max(...lats)+.003,Math.max(...lons)+.005]];
+}
+function flyToData(){map.fitBounds(dataBounds(),{padding:[50,50],maxZoom:15});}
+flyToData();
+
+// ── MARKERS ───────────────────────────────────────────────────────────────────
+let mkrs=[];
+function mkIcon(label,mode){
+  const C={
+    idle:{bg:'#4A7C28',bd:'2px solid #E8A020',sz:20,fs:'9px'},
+    dim: {bg:'#666',   bd:'1px solid #999',   sz:13,fs:'0',op:.32},
+    sel: {bg:'#C44B1B',bd:'2px solid #fff',   sz:25,fs:'10px',sh:'0 2px 6px rgba(0,0,0,.5)'},
+    manual:{bg:'#2a7ab5',bd:'2px solid #fff', sz:22,fs:'10px',sh:'0 1px 5px rgba(0,0,0,.4)'},
+  }[mode]||{bg:'#4A7C28',bd:'2px solid #E8A020',sz:20,fs:'9px'};
+  const sz=C.sz,a=sz/2;
+  const st=`width:${sz}px;height:${sz}px;border-radius:50%;background:${C.bg};border:${C.bd};`
+    +`display:flex;align-items:center;justify-content:center;font-size:${C.fs};font-weight:700;`
+    +`color:#fff;font-family:sans-serif;`+(C.sh?`box-shadow:${C.sh};`:'')+(C.op?`opacity:${C.op};`:'');
+  return L.divIcon({html:`<div style="${st}">${label}</div>`,className:'',iconSize:[sz,sz],iconAnchor:[a,a]});
+}
+function rebuildMarkers(){
+  mkrs.forEach(m=>map.removeLayer(m));mkrs=[];
+  cpLL=CPS.map(cp=>rd2wgs(cp.x,cp.y));
+  CPS.forEach((cp,i)=>{
+    const m=L.marker(cpLL[i],{icon:mkIcon(cp.cp,'idle')}).addTo(map);
+    m.bindTooltip(`<b>Post ${cp.cp}</b><br>${cp.desc}`,{direction:'top'});
+    mkrs.push(m);
+  });
+}
+rebuildMarkers();
+$('pcount').innerHTML=`<span class="pill">📍 ${CPS.length} posten (standaard)</span>`;
+
+// ── XLSX UPLOAD ───────────────────────────────────────────────────────────────
+$('xin').addEventListener('change',function(e){
+  const f=e.target.files[0];if(!f)return;
+  const r=new FileReader();
+  r.onload=ev=>{
+    try{
+      const wb=XLSX.read(ev.target.result,{type:'binary'});
+      const rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
+      if(!rows.length){alert('Geen rijen gevonden.');return;}
+      const keys=Object.keys(rows[0]);
+      const find=cs=>keys.find(k=>cs.includes(k.toLowerCase().trim()));
+      const cCP=find(['cp','nr','number','nummer','post'])||keys[0];
+      const cX=find(['x','rd_x','rdx','x_rd'])||keys[1];
+      const cY=find(['y','rd_y','rdy','y_rd'])||keys[2];
+      const cD=find(['beschrijving','description','desc','omschrijving','naam','name','locatie'])||keys[3];
+      const cC=find(['check','letter','code','antwoord','answer'])||keys[4];
+      const parsed=rows.map(row=>({
+        cp:row[cCP],x:parseFloat(row[cX]),y:parseFloat(row[cY]),
+        desc:String(row[cD]||''),check:String(row[cC]||'?')
+      })).filter(r=>!isNaN(r.x)&&!isNaN(r.y));
+      if(!parsed.length){alert('Geen geldige coördinaten.\nVerwacht: CP, X, Y, beschrijving, check');return;}
+      CPS=parsed;rebuildMarkers();flyToData();doReset();
+      $('dz').classList.add('ok');
+      $('dzs').textContent=`✓ ${f.name}`;
+      $('pcount').innerHTML=`<span class="pill">📍 ${CPS.length} posten geladen</span>`;
+    }catch(err){alert('Leesfout: '+err.message);}
+  };
+  r.readAsBinaryString(f);
+});
+
+// ── MODE TOGGLE ───────────────────────────────────────────────────────────────
+let mode='auto'; // 'auto' | 'manual'
+let addingStart=false; // phase within manual mode
+
+$('mode-auto').addEventListener('click',()=>setMode('auto'));
+$('mode-manual').addEventListener('click',()=>setMode('manual'));
+
+function setMode(m){
+  mode=m;
+  doReset();
+  $('mode-auto').className='mode-btn'+(m==='auto'?' active':'');
+  $('mode-manual').className='mode-btn'+(m==='manual'?' active-blue':'');
+  $('mode-info').textContent=m==='auto'
+    ?"Punten uit xlsx, route automatisch gegenereerd."
+    :"Klik zelf punten op de kaart (geen xlsx nodig).";
+  $('dist-section').classList.toggle('hidden',m==='manual');
+  $('manual-section').classList.toggle('hidden',m==='auto');
+  $('gbtn').classList.toggle('hidden',m==='manual');
+  if(m==='manual'){
+    $('hint').textContent='👆 Klik op de kaart voor het STARTPUNT';
+    $('hint').style.opacity='1';
+    addingStart=true;
+  }else{
+    $('hint').textContent='👆 Klik op de kaart om het startpunt te kiezen';
+    $('hint').style.opacity='1';
+  }
+}
+
+// ── STATE ─────────────────────────────────────────────────────────────────────
+let startLL=null,startMkr=null,routeLine=null,routeRes=null,pdfUrl=null;
+// Manual mode
+let manualPts=[]; // [{ll,mkr}]
+let manualPolyline=null;
+
+// ── MAP CLICK ─────────────────────────────────────────────────────────────────
+map.on('click',e=>{
+  if(routeRes) return; // locked after confirm
+
+  const ll=[e.latlng.lat,e.latlng.lng];
+
+  if(mode==='auto'){
+    // Auto mode: first click = start
+    startLL=ll;
+    if(startMkr) map.removeLayer(startMkr);
+    startMkr=L.marker(ll,{icon:startIcon()}).addTo(map).bindTooltip('Startpunt');
+    const rd=wgs2rd(ll[0],ll[1]);
+    $('stxt').textContent=`RD: ${Math.round(rd[0])}, ${Math.round(rd[1])}`;
+    $('gbtn').disabled=false;
+    $('hint').style.opacity='0';
+
+  }else{
+    // Manual mode
+    if(addingStart){
+      startLL=ll;
+      if(startMkr) map.removeLayer(startMkr);
+      startMkr=L.marker(ll,{icon:startIcon()}).addTo(map).bindTooltip('Startpunt');
+      const rd=wgs2rd(ll[0],ll[1]);
+      $('stxt').textContent=`RD: ${Math.round(rd[0])}, ${Math.round(rd[1])}`;
+      addingStart=false;
+      $('hint').textContent='📍 Klik om posten toe te voegen';
+      $('hint').style.opacity='1';
+      $('confirm-manual').style.display='block';
+      $('confirm-manual').classList.remove('hidden');
+      $('gbtn').disabled=true;
+    }else{
+      // Add a manual point
+      const i=manualPts.length+1;
+      const m=L.marker(ll,{icon:mkIcon(i,'manual')}).addTo(map);
+      m.bindTooltip(`Post ${i}`,{direction:'top'});
+      manualPts.push({ll,mkr:m,desc:`Post ${i}`,check:'?'});
+      updateManualUI();
+    }
+  }
+});
+
+function startIcon(){
+  // Equilateral triangle pointing up — classic orienteering start symbol
+  const size=40;
+  const svg=`<svg width="${size}" height="${size}" viewBox="0 0 30 30" xmlns="http://www.w3.org/2000/svg">
+    <polygon points="15,2 28,26 2,26" fill="#C44B1B" stroke="white" stroke-width="2.5" stroke-linejoin="round"/>
+    <polygon points="15,8 24,23 6,23" fill="none" stroke="white" stroke-width="1.5" stroke-linejoin="round"/>
+  </svg>`;
+  return L.divIcon({html:svg,className:'',iconSize:[size,size],iconAnchor:[size/2,size*0.87]});
+}
+
+function updateManualUI(){
+  // Update polyline preview
+  if(manualPolyline) map.removeLayer(manualPolyline);
+  if(startLL&&manualPts.length>0){
+    const lls=[startLL,...manualPts.map(p=>p.ll),startLL];
+    manualPolyline=L.polyline(lls,{color:'#2a7ab5',weight:2.5,opacity:.75,dashArray:'5,4'}).addTo(map);
+  }
+  // Update list
+  const list=$('manual-list');list.innerHTML='';
+  let d=0;
+  if(startLL&&manualPts.length>0){
+    let prev=startLL;
+    manualPts.forEach((p,i)=>{d+=dst(prev,p.ll);prev=p.ll;});
+    d+=dst(manualPts[manualPts.length-1].ll,startLL);
+  }
+  manualPts.forEach((p,i)=>{
+    const li=document.createElement('li');li.className='manual-item';
+    li.innerHTML=`<div class="manual-num">${i+1}</div><div style="flex:1;font-size:11px;color:var(--cream)">${p.desc}</div><button class="manual-del" data-i="${i}" title="Verwijder">×</button>`;
+    list.appendChild(li);
+  });
+  $('manual-dist-info').textContent=manualPts.length>0?`Totaal: ~${d.toFixed(1)} km (retour)`:'';
+  // Enable confirm if ≥1 point
+  $('confirm-manual').disabled=manualPts.length<1;
+  // Re-number markers
+  manualPts.forEach((p,i)=>p.mkr.setIcon(mkIcon(i+1,'manual')));
+}
+
+// Delete manual point
+$('manual-list').addEventListener('click',e=>{
+  const btn=e.target.closest('.manual-del');
+  if(!btn)return;
+  const i=parseInt(btn.dataset.i);
+  map.removeLayer(manualPts[i].mkr);
+  manualPts.splice(i,1);
+  updateManualUI();
+});
+
+// ── SAVE MANUAL POINTS AS CSV ─────────────────────────────────────────────────
+$('save-manual-btn').addEventListener('click',()=>{
+  if(manualPts.length===0){alert('Geen handmatige punten om op te slaan.');return;}
+  const rows=['CP,X,Y,beschrijving,check'];
+  manualPts.forEach((p,i)=>{
+    const rd=wgs2rd(p.ll[0],p.ll[1]);
+    const desc=(p.desc||'Post '+(i+1)).replace(/,/g,';'); // escape commas
+    const chk=(p.check||'?').replace(/,/g,';');
+    rows.push(`${i+1},${Math.round(rd[0])},${Math.round(rd[1])},${desc},${chk}`);
+  });
+  const csv=rows.join('\n');
+  const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;
+  a.download='handmatige_posten.csv';
+  a.click();
+  URL.revokeObjectURL(url);
+});
+
+// ── LOAD MANUAL POINTS FROM CSV / XLSX ───────────────────────────────────────
+$('load-manual-input').addEventListener('change',function(e){
+  const f=e.target.files[0];if(!f)return;
+  const reader=new FileReader();
+  const isXlsx=f.name.match(/\.xlsx?$/i);
+
+  function processRows(rows){
+    // rows: array of objects with keys detected flexibly
+    if(!rows.length){alert('Geen rijen gevonden.');return;}
+    const keys=Object.keys(rows[0]);
+    const find=cs=>keys.find(k=>cs.includes(k.toLowerCase().trim()));
+    const cX=find(['x','rd_x','rdx','x_rd'])||keys[1];
+    const cY=find(['y','rd_y','rdy','y_rd'])||keys[2];
+    const cD=find(['beschrijving','description','desc','omschrijving','naam','name','locatie'])||keys[3];
+    const cC=find(['check','letter','code','antwoord','answer'])||keys[4];
+    const parsed=rows.map(r=>({
+      x:parseFloat(r[cX]),y:parseFloat(r[cY]),
+      desc:String(r[cD]||''),check:String(r[cC]||'?')
+    })).filter(r=>!isNaN(r.x)&&!isNaN(r.y));
+    if(!parsed.length){alert('Geen geldige coördinaten gevonden.\nVerwacht: X, Y, beschrijving, check');return;}
+
+    // Remove existing manual markers
+    manualPts.forEach(p=>map.removeLayer(p.mkr));
+    manualPts=[];
+
+    parsed.forEach((pt,i)=>{
+      const ll=rd2wgs(pt.x,pt.y);
+      const m=L.marker(ll,{icon:mkIcon(i+1,'manual')}).addTo(map);
+      m.bindTooltip(pt.desc||`Post ${i+1}`,{direction:'top'});
+      manualPts.push({ll,mkr:m,desc:pt.desc||`Post ${i+1}`,check:pt.check});
+    });
+
+    // Make sure we're in manual mode with start set
+    if(mode!=='manual') setMode('manual');
+    updateManualUI();
+
+    // Zoom to loaded points
+    if(manualPts.length>0){
+      const lls=manualPts.map(p=>p.ll);
+      map.fitBounds(dataBounds(lls),{padding:[50,50],maxZoom:15});
+    }
+
+    // Show confirm button
+    addingStart=false;
+    if(!startLL){
+      $('hint').textContent='👆 Klik op de kaart voor het STARTPUNT';
+      $('hint').style.opacity='1';
+    } else {
+      $('confirm-manual').style.display='block';
+      $('confirm-manual').classList.remove('hidden');
+      $('hint').style.opacity='0';
+    }
+    alert(`✓ ${parsed.length} punten geladen uit ${f.name}`);
+  }
+
+  if(isXlsx){
+    reader.onload=ev=>{
+      try{
+        const wb=XLSX.read(ev.target.result,{type:'binary'});
+        const rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
+        processRows(rows);
+      }catch(err){alert('Leesfout: '+err.message);}
+    };
+    reader.readAsBinaryString(f);
+  }else{
+    // CSV
+    reader.onload=ev=>{
+      try{
+        const lines=ev.target.result.trim().split(/\r?\n/);
+        const headers=lines[0].split(',').map(h=>h.trim());
+        const rows=lines.slice(1).map(line=>{
+          const vals=line.split(',');
+          const obj={};
+          headers.forEach((h,i)=>obj[h]=vals[i]?.trim()||'');
+          return obj;
+        });
+        processRows(rows);
+      }catch(err){alert('CSV leesfout: '+err.message);}
+    };
+    reader.readAsText(f,'UTF-8');
+  }
+  // Reset input so same file can be loaded again
+  this.value='';
+});
+
+// ── CONFIRM MANUAL ────────────────────────────────────────────────────────────
+function buildManualRoute(){
+  // Build routeRes from manualPts in current order
+  const pts=manualPts.map((p,i)=>({cp:i+1,ll:p.ll,desc:p.desc,check:p.check}));
+  const d=routeTotalDist(pts,startLL);
+  return{pts,dist:d,manual:true};
+}
+
+$('confirm-manual').addEventListener('click',()=>{
+  if(!startLL||manualPts.length<1){alert('Voeg minimaal 1 post toe.');return;}
+  routeRes=buildManualRoute();
+  finaliseRoute(routeRes);
+  $('confirm-manual').style.display='none';
+  $('reshuf-manual').style.display='block';
+});
+
+// 🔀 Reshuffle manual: run 2-opt + random perturbation on the manual points
+$('reshuf-manual').addEventListener('click',()=>{
+  if(!startLL||manualPts.length<2) return;
+  // Random perturbation: swap two random points, then 2-opt
+  const n=manualPts.length;
+  const i=Math.floor(Math.random()*n), j=(i+1+Math.floor(Math.random()*(n-1)))%n;
+  [manualPts[i],manualPts[j]]=[manualPts[j],manualPts[i]];
+  // 2-opt improvement on manualPts order
+  let improved=true;
+  while(improved){
+    improved=false;
+    const pts=manualPts.map(p=>({ll:p.ll}));
+    for(let a=0;a<n-1;a++) for(let b=a+1;b<n;b++){
+      const rev=[...manualPts.slice(0,a),...manualPts.slice(a,b+1).reverse(),...manualPts.slice(b+1)];
+      if(routeTotalDist(rev.map(p=>({ll:p.ll})),startLL)<routeTotalDist(manualPts.map(p=>({ll:p.ll})),startLL)-0.001){
+        manualPts=rev;improved=true;
+      }
+    }
+  }
+  // Renumber markers
+  manualPts.forEach((p,i)=>{p.desc=`Post ${i+1}`;p.check='?';p.mkr.setIcon(mkIcon(i+1,'manual'));});
+  routeRes=buildManualRoute();
+  // Redraw route
+  if(routeLine) map.removeLayer(routeLine);
+  const lls=[startLL,...routeRes.pts.map(p=>p.ll),startLL];
+  routeLine=L.polyline(lls,{color:'#C44B1B',weight:3.2,opacity:.88,dashArray:'7,5'}).addTo(map);
+  map.fitBounds(routeLine.getBounds(),{padding:[35,35]});
+  updateRouteUI(routeRes);
+});
+
+// ── SLIDER ────────────────────────────────────────────────────────────────────
+$('dsl').addEventListener('input',()=>{$('dv').textContent=$('dsl').value;$('dh').textContent=$('dsl').value;});
+
+// ── ROUTE ALGORITHM (auto) ────────────────────────────────────────────────────
+// Phase 1: randomised nearest-neighbour point selection within budget.
+//   At each step we score candidates by a blend of:
+//     - proximity to current position (we want short legs)
+//     - proximity to start (we don't want to drift far and need a huge return leg)
+//   This keeps the return leg comparable to other legs.
+// Phase 2: 2-opt improvement — swap pairs of edges if total route distance decreases.
+//   This removes obvious crossings and evens out leg lengths.
+
+function routeTotalDist(pts,startPt){
+  let d=dst(startPt,pts[0].ll);
+  for(let i=1;i<pts.length;i++) d+=dst(pts[i-1].ll,pts[i].ll);
+  d+=dst(pts[pts.length-1].ll,startPt);
+  return d;
+}
+
+function twoOpt(pts,startPt){
+  // pts is ordered array; we improve order to minimise total circuit length
+  let improved=true;
+  let best=pts.slice();
+  while(improved){
+    improved=false;
+    for(let i=0;i<best.length-1;i++){
+      for(let j=i+1;j<best.length;j++){
+        // Reverse segment [i..j]
+        const candidate=best.slice(0,i).concat(best.slice(i,j+1).reverse()).concat(best.slice(j+1));
+        if(routeTotalDist(candidate,startPt)<routeTotalDist(best,startPt)-0.001){
+          best=candidate;improved=true;
+        }
+      }
+    }
+  }
+  return best;
+}
+
+function genRoute(startPt,km){
+  function rng(s){let t=s+0x6D2B79F5;t=Math.imul(t^t>>>15,t|1);t^=t+Math.imul(t^t>>>7,t|61);return((t^t>>>14)>>>0)/4294967296;}
+  let s=Math.floor(Math.random()*1e9);
+  const all=CPS.map((cp,i)=>({...cp,ll:cpLL[i]}));
+
+  const lo=km*0.75, hi=km*1.1;
+
+  // ── Step 1: filter to points within km*0.3 of start ──────────────────────
+  // Beyond that radius a round trip uses >80% of budget just getting there and back.
+  const maxRadius=km*0.3;
+  let pool=all.filter(p=>dst(startPt,p.ll)<=maxRadius);
+  if(pool.length<3){
+    pool=[...all].sort((a,b)=>dst(startPt,a.ll)-dst(startPt,b.ll)).slice(0,Math.min(8,all.length));
+  }
+
+  // ── Step 2: pure nearest-neighbour walk ──────────────────────────────────
+  // Each step: pick from the 4 nearest unvisited points.
+  // After spending 50% of km, bias toward points closer to start.
+  // Single leg cap: never more than 30% of total km.
+
+  let sel=[],cur=startPt,totalDist=0,rem=pool.slice();
+
+  while(rem.length){
+    const minLeg=0.2; // minimaal 300m tussen punten
+    const viable=rem
+      .map(p=>({p, legD:dst(cur,p.ll), ret:dst(p.ll,startPt)}))
+      .filter(({p,legD,ret})=>
+        totalDist+legD+ret<=hi &&  // fits in budget
+        legD<=km*0.2 &&              // single leg not more than 30% of route
+        legD>=minLeg               // minimaal 300m
+      )
+      .sort((a,b)=>a.legD-b.legD); // nearest first
+
+    if(!viable.length) break;
+
+    const headingHome=totalDist>km*0.3;
+    let candidates;
+    if(headingHome){
+      // Pick from points nearest to start (loop closing)
+      candidates=[...viable].sort((a,b)=>a.ret-b.ret).slice(0,4);
+    } else {
+      // Pure nearest-neighbour
+      candidates=viable.slice(0,4);
+    }
+
+    const weights=[4,2,1,1].slice(0,candidates.length);
+    const wSum=weights.reduce((a,b)=>a+b,0);
+    let rv=rng(s+=1337)*wSum, pick=0;
+    for(let i=0;i<candidates.length;i++){rv-=weights[i];if(rv<=0){pick=i;break;}}
+    const nxt=candidates[pick].p;
+
+    totalDist+=dst(cur,nxt.ll);
+    cur=nxt.ll;
+    sel.push(nxt);
+    rem.splice(rem.findIndex(r=>r.cp===nxt.cp),1);
+
+    // Stop when the route including return is in target range
+    const withReturn=totalDist+dst(cur,startPt);
+    if(withReturn>=lo) break;
+  }
+
+  if(sel.length<1 && pool.length>0) sel.push(pool[0]);
+
+// Zorg dat het laatste punt niet te ver van start is
+// Herorden zodat het punt dichtst bij start als laatste staat
+if(sel.length>=2){
+  const returnDist=dst(cur,startPt);
+  const avgLeg=routeTotalDist(sel,startPt)/sel.length;
+  if(returnDist>avgLeg*1.5){
+    // Vind het punt in sel dat het dichtst bij start ligt
+    let bestIdx=0, bestDist=Infinity;
+    sel.forEach((p,i)=>{
+      const d=dst(p.ll,startPt);
+      if(d<bestDist){bestDist=d;bestIdx=i;}
+    });
+    // Roteer de array zodat bestIdx het laatste element is
+    //sel=[...sel.slice(bestIdx+1),...sel.slice(0,bestIdx+1)];
+  }
+}
+
+  // ── Step 3: 2-opt to remove crossings ────────────────────────────────────
+  //if(sel.length>=3) sel=twoOpt(sel,startPt);
+
+  // ── Step 4: if too short, insert best nearby point ────────────────────────
+  let totalD=routeTotalDist(sel,startPt);
+  const used=new Set(sel.map(p=>p.cp));
+  const unused=pool.filter(p=>!used.has(p.cp));
+
+  while(totalD<lo && unused.length>0){
+    let bestExtra=null, bestDelta=Infinity;
+    for(const p of unused){
+      for(let ins=0;ins<=sel.length;ins++){
+        const prevPt=ins===0?startPt:sel[ins-1].ll;
+        const nextPt=ins===sel.length?startPt:sel[ins].ll;
+        if(dst(prevPt,p.ll)>km*0.3||dst(p.ll,nextPt)>km*0.3) continue;
+        const d=routeTotalDist([...sel.slice(0,ins),p,...sel.slice(ins)],startPt);
+        if(d<=hi){
+          const delta=Math.abs(d-km);
+          if(delta<bestDelta){bestDelta=delta;bestExtra={p,ins,d};}
+        }
+      }
+    }
+    if(!bestExtra) break;
+    sel=[...sel.slice(0,bestExtra.ins),bestExtra.p,...sel.slice(bestExtra.ins)];
+    used.add(bestExtra.p.cp);
+    unused.splice(unused.findIndex(p=>p.cp===bestExtra.p.cp),1);
+    totalD=bestExtra.d;
+  }
+
+  // ── Step 5: if too long, remove least-important point ────────────────────
+  if(totalD>hi && sel.length>1){
+    let bestRemove=null, bestDelta=Infinity;
+    for(let i=0;i<sel.length;i++){
+      const d=routeTotalDist(sel.filter((_,j)=>j!==i),startPt);
+      const delta=Math.abs(d-km);
+      if(delta<bestDelta){bestDelta=delta;bestRemove={i,d};}
+    }
+    if(bestRemove) sel=sel.filter((_,j)=>j!==bestRemove.i);
+  }
+
+  return{pts:sel, dist:routeTotalDist(sel,startPt)};
+}
+
+$('gbtn').addEventListener('click',()=>{
+  const km=parseFloat($('dsl').value);
+  routeRes=genRoute(startLL,km);
+  finaliseRoute(routeRes);
+  $('reshuf').style.display='block';
+  $('gbtn').classList.add('hidden');
+  $('dsl').disabled=true;
+});
+
+$('reshuf').addEventListener('click',()=>{
+  const km=parseFloat($('dsl').value);
+  routeRes=genRoute(startLL,km);
+  if(routeLine) map.removeLayer(routeLine);
+  const lls=[startLL,...routeRes.pts.map(p=>p.ll),startLL];
+  routeLine=L.polyline(lls,{color:'#C44B1B',weight:3,opacity:.88,dashArray:'6,4'}).addTo(map);
+  mkrs.forEach((m,i)=>{const cp=CPS[i],si=routeRes.pts.findIndex(p=>p.cp===cp.cp);m.setIcon(si>=0?mkIcon(si+1,'sel'):mkIcon('','dim'));});
+  map.fitBounds(routeLine.getBounds(),{padding:[35,35]});
+  updateRouteUI(routeRes);
+});
+
+function finaliseRoute(res){
+  // Clean up manual preview polyline
+  if(manualPolyline){map.removeLayer(manualPolyline);manualPolyline=null;}
+  const lls=[startLL,...res.pts.map(p=>p.ll),startLL];
+  if(routeLine) map.removeLayer(routeLine);
+  routeLine=L.polyline(lls,{color:'#C44B1B',weight:3.2,opacity:.88,dashArray:'7,5'}).addTo(map);
+  if(mode==='auto'){
+    mkrs.forEach((m,i)=>{const cp=CPS[i],si=res.pts.findIndex(p=>p.cp===cp.cp);m.setIcon(si>=0?mkIcon(si+1,'sel'):mkIcon('','dim'));});
+  }
+  map.fitBounds(routeLine.getBounds(),{padding:[35,35]});
+  ['rtsec','ansec','pdfsec'].forEach(id=>$(id).classList.remove('hidden'));
+  $('rbtn').classList.remove('hidden');
+  $('confirm-manual').style.display='none';
+  $('hint').style.opacity='0';
+  updateRouteUI(res);
+}
+
+function updateRouteUI(res){
+  $('sdist').textContent=res.dist.toFixed(1);
+  $('scps').textContent=res.pts.length;
+  const cpl=$('cpl');cpl.innerHTML='';
+  const rd=wgs2rd(startLL[0],startLL[1]);
+  cpl.innerHTML=`<li class="cpi"><div class="cpn st" style="font-size:13px">▲</div><div class="cpd">Start (${Math.round(rd[0])}, ${Math.round(rd[1])})</div></li>`;
+  res.pts.forEach((pt,i)=>{
+    const li=document.createElement('li');li.className='cpi';
+    li.innerHTML=`<div class="cpn">${i+1}</div><div class="cpd">${pt.desc||'Post '+(i+1)}</div><div class="cpc">${pt.check||'?'}</div>`;
+    cpl.appendChild(li);
+  });
+  const ansh=$('ansh');ansh.innerHTML='';
+  res.pts.forEach((pt,i)=>{
+    const row=document.createElement('div');row.className='anr';
+    row.innerHTML=`<div class="ann">${i+1}</div><div class="and">${pt.desc||'Post '+(i+1)}</div><div class="anb"></div>`;
+    ansh.appendChild(row);
+  });
+}
+
+function doReset(){
+  if(startMkr){map.removeLayer(startMkr);startMkr=null;}
+  if(routeLine){map.removeLayer(routeLine);routeLine=null;}
+  if(manualPolyline){map.removeLayer(manualPolyline);manualPolyline=null;}
+  manualPts.forEach(p=>map.removeLayer(p.mkr));manualPts=[];
+  $('manual-list').innerHTML='';$('manual-dist-info').textContent='';
+  startLL=null;routeRes=null;addingStart=(mode==='manual');
+  $('stxt').textContent='Nog geen startpunt gekozen';
+  $('gbtn').disabled=true;$('gbtn').classList.remove('hidden');
+  $('reshuf').style.display='none';
+  $('confirm-manual').style.display='none';
+  $('reshuf-manual').style.display='none';
+  $('rbtn').classList.add('hidden');
+  $('dsl').disabled=false;
+  ['rtsec','ansec','pdfsec'].forEach(id=>$(id).classList.add('hidden'));
+  $('hint').style.opacity='1';
+  if(mode==='manual'){
+    $('hint').textContent='👆 Klik op de kaart voor het STARTPUNT';
+  }else{
+    $('hint').textContent='👆 Klik op de kaart om het startpunt te kiezen';
+  }
+  rebuildMarkers();
+  // Do NOT flyToData() on reset — keep the current map view
+}
+$('rbtn').addEventListener('click',doReset);
+
+// ── PDF GENERATION ────────────────────────────────────────────────────────────
+function setProgress(pct,txt){$('lbar').style.width=pct+'%';if(txt!=null)$('ltxt').textContent=txt;}
+function tick(){return new Promise(r=>setTimeout(r,18));}
+
+function loadTile(url){
+  return new Promise(res=>{
+    const img=new Image();img.crossOrigin='anonymous';
+    img.onload=()=>res(img);img.onerror=()=>res(null);
+    setTimeout(()=>res(null),15000);
+    img.src=url;
+  });
+}
+
+// Paper sizes in mm [width, height]
+const PAPER={a4l:[297,210],a4p:[210,297],a3l:[420,297],a3p:[297,420]};
+
+// Page dimensions for given format
+function pageSize(fmt){
+  if(fmt==='multi') return PAPER.a4l;
+  return PAPER[fmt]||PAPER.a4l;
+}
+
+// ── SCALE CALCULATION ────────────────────────────────────────────────────────
+// Integer tile zoom is discrete — each step doubles/halves the scale.
+// It is mathematically impossible to have both an exact round scale AND fill
+// the full page with integer zoom tiles.
+// Solution: always fill the full page. Pick nearest zoom to the requested
+// scale and label the map with the ACTUAL scale — full page, honest label.
+
+const EARTH_CIRC=2*Math.PI*6378137;
+const DPI=150;
+const DPM=DPI/25.4;
+
+function mPerPxAtZoom(lat,zoom){
+  return EARTH_CIRC*Math.cos(lat*Math.PI/180)/(256*Math.pow(2,zoom));
+}
+function scaleDenomAtZoom(lat,zoom){
+  return mPerPxAtZoom(lat,zoom)*DPM*1000;
+}
+function bestZoomForTarget(lat,targetDenom){
+  const zExact=Math.log2(EARTH_CIRC*Math.cos(lat*Math.PI/180)*DPM*1000/(256*targetDenom));
+  const zF=Math.floor(zExact), zC=Math.ceil(zExact);
+  const dF=scaleDenomAtZoom(lat,zF), dC=scaleDenomAtZoom(lat,zC);
+  const tileZoom=Math.abs(dF-targetDenom)<=Math.abs(dC-targetDenom)?zF:zC;
+  return{tileZoom, actualDenom:Math.round(scaleDenomAtZoom(lat,tileZoom))};
+}
+function autoZoom(lat,mppNeeded){
+  const zExact=Math.log2(EARTH_CIRC*Math.cos(lat*Math.PI/180)/(256*mppNeeded));
+  const tileZoom=Math.round(zExact);
+  return{tileZoom, actualDenom:Math.round(scaleDenomAtZoom(lat,tileZoom))};
+}
+
+// ── KM GRID ──────────────────────────────────────────────────────────────────
+// Draw a 1km (or 2km/5km) grid in RD-new coordinates projected onto the canvas.
+// RD-new is a planar projection in metres, so grid lines are simply integer km multiples.
+function drawKmGrid(ctx,W,H,proj,minLat,minLon,maxLat,maxLon,scaleDenom){
+  // Choose grid spacing based on scale
+  let gridM=1000; // 1km default
+  if(scaleDenom>30000) gridM=2000;
+  if(scaleDenom>75000) gridM=5000;
+  if(scaleDenom>150000) gridM=10000;
+
+  // Convert bounding box corners to RD
+  const [xMin,yMin]=wgs2rd(minLat,minLon);
+  const [xMax,yMax]=wgs2rd(maxLat,maxLon);
+
+  // Snap to grid
+  const x0=Math.floor(xMin/gridM)*gridM;
+  const y0=Math.floor(yMin/gridM)*gridM;
+
+  ctx.save();
+  ctx.strokeStyle='rgba(0,80,160,0.25)';
+  ctx.lineWidth=1;
+  ctx.setLineDash([3,5]);
+  ctx.font=`bold ${Math.round(W*0.012)}px sans-serif`;
+  ctx.fillStyle='rgba(0,60,130,0.65)';
+  ctx.textBaseline='top';
+
+  // Vertical lines (constant X in RD = easting)
+  for(let x=x0;x<=xMax+gridM;x+=gridM){
+    // Convert two RD points to WGS84 and project
+    const ll1=rd2wgs(x,yMin);
+    const ll2=rd2wgs(x,yMax);
+    const p1=proj(ll1[0],ll1[1]);
+    const p2=proj(ll2[0],ll2[1]);
+    ctx.beginPath();ctx.moveTo(p1.px,p1.py);ctx.lineTo(p2.px,p2.py);ctx.stroke();
+    // Label at bottom
+    const lx=Math.round(x/1000);
+    ctx.textAlign='center';
+    if(p1.px>10&&p1.px<W-10) ctx.fillText(lx+'km',p1.px,H-18);
+  }
+  // Horizontal lines (constant Y in RD = northing)
+  for(let y=y0;y<=yMax+gridM;y+=gridM){
+    const ll1=rd2wgs(xMin,y);
+    const ll2=rd2wgs(xMax,y);
+    const p1=proj(ll1[0],ll1[1]);
+    const p2=proj(ll2[0],ll2[1]);
+    ctx.beginPath();ctx.moveTo(p1.px,p1.py);ctx.lineTo(p2.px,p2.py);ctx.stroke();
+    const ly=Math.round(y/1000);
+    ctx.textAlign='left';
+    if(p1.py>10&&p1.py<H-10) ctx.fillText(ly+'km',4,p1.py+2);
+  }
+  ctx.restore();
+  return gridM;
+}
+
+// ── BUILD MAP CANVAS ─────────────────────────────────────────────────────────
+async function buildMapCanvas(cLat,cLon,zoom,W,H,minLat,minLon,maxLat,maxLon,routeLLs,cpPts,totalTilesRef){
+  const TILE=256,n=Math.pow(2,zoom);
+  const cTX=(cLon+180)/360*n;
+  const cTY=(1-Math.log(Math.tan(cLat*Math.PI/180)+1/Math.cos(cLat*Math.PI/180))/Math.PI)/2*n;
+  const sTX=Math.floor(cTX-W/(2*TILE));
+  const sTY=Math.floor(cTY-H/(2*TILE));
+  const offX=Math.round((sTX-cTX)*TILE+W/2);
+  const offY=Math.round((sTY-cTY)*TILE+H/2);
+  const nTX=Math.ceil((W-offX)/TILE)+2;
+  const nTY=Math.ceil((H-offY)/TILE)+2;
+  const subs=['a','b','c'];
+
+  if(totalTilesRef) totalTilesRef.total=nTX*nTY;
+  let loaded=0;
+  const jobs=[];
+  for(let tx=0;tx<nTX;tx++) for(let ty=0;ty<nTY;ty++){
+    const tX=sTX+tx,tY=sTY+ty;
+    const url=`https://${subs[(tX+tY)%3]}.tile.opentopomap.org/${zoom}/${tX}/${tY}.png`;
+    jobs.push(loadTile(url).then(img=>{
+      loaded++;
+      if(totalTilesRef) setProgress(10+Math.round(loaded/totalTilesRef.total*55),`Tegels ${loaded}/${totalTilesRef.total}…`);
+      return{img,px:offX+tx*TILE,py:offY+ty*TILE};
+    }));
+  }
+
+  const canvas=document.createElement('canvas');canvas.width=W;canvas.height=H;
+  const ctx=canvas.getContext('2d');
+  ctx.fillStyle='#d9d0c0';ctx.fillRect(0,0,W,H);
+  (await Promise.all(jobs)).forEach(t=>{if(t&&t.img)ctx.drawImage(t.img,t.px,t.py,TILE,TILE);});
+
+  // Projection function for this tile layout
+  function proj(lat,lon){
+    const tx=(lon+180)/360*n;
+    const ty=(1-Math.log(Math.tan(lat*Math.PI/180)+1/Math.cos(lat*Math.PI/180))/Math.PI)/2*n;
+    return{px:offX+(tx-sTX)*TILE,py:offY+(ty-sTY)*TILE};
+  }
+
+  // ── KM GRID ──
+  const scDenom=Math.round(scaleDenomAtZoom(cLat,zoom));
+  drawKmGrid(ctx,W,H,proj,minLat,minLon,maxLat,maxLon,scDenom);
+
+  // ── ROUTE LINE ──
+  ctx.strokeStyle='#C44B1B';ctx.lineWidth=3.5;ctx.setLineDash([9,6]);ctx.lineJoin='round';
+  ctx.beginPath();
+  routeLLs.forEach((p,i)=>{const{px,py}=proj(p[0],p[1]);i?ctx.lineTo(px,py):ctx.moveTo(px,py);});
+  ctx.stroke();ctx.setLineDash([]);
+
+  // ── START MARKER — equilateral triangle (orienteering standard) ──
+  const sp=proj(routeLLs[0][0],routeLLs[0][1]);
+  const tr=20; // circumradius of triangle in px
+  // Equilateral triangle pointing up: 3 vertices
+  const triPts=[
+    [sp.px, sp.py-tr],                                    // top
+    [sp.px+tr*Math.sin(Math.PI*2/3), sp.py-tr*Math.cos(Math.PI*2/3)], // bottom-right
+    [sp.px+tr*Math.sin(Math.PI*4/3), sp.py-tr*Math.cos(Math.PI*4/3)], // bottom-left
+  ];
+  ctx.beginPath();ctx.moveTo(triPts[0][0],triPts[0][1]);
+  ctx.lineTo(triPts[1][0],triPts[1][1]);ctx.lineTo(triPts[2][0],triPts[2][1]);ctx.closePath();
+  ctx.fillStyle='#C44B1B';ctx.fill();ctx.strokeStyle='#fff';ctx.lineWidth=2.5;ctx.stroke();
+  // Inner smaller triangle (double triangle = classic orienteering start)
+  const tr2=tr*0.55;
+  const triPts2=[
+    [sp.px, sp.py-tr2],
+    [sp.px+tr2*Math.sin(Math.PI*2/3), sp.py-tr2*Math.cos(Math.PI*2/3)],
+    [sp.px+tr2*Math.sin(Math.PI*4/3), sp.py-tr2*Math.cos(Math.PI*4/3)],
+  ];
+  ctx.beginPath();ctx.moveTo(triPts2[0][0],triPts2[0][1]);
+  ctx.lineTo(triPts2[1][0],triPts2[1][1]);ctx.lineTo(triPts2[2][0],triPts2[2][1]);ctx.closePath();
+  ctx.strokeStyle='#fff';ctx.lineWidth=1.5;ctx.stroke();
+
+  // ── CP MARKERS ──
+  cpPts.forEach((cp,i)=>{
+    const{px,py}=proj(cp.ll[0],cp.ll[1]);
+    ctx.beginPath();ctx.arc(px,py,14,0,Math.PI*2);ctx.fillStyle='rgba(255,255,255,.88)';ctx.fill();
+    ctx.beginPath();ctx.arc(px,py,11,0,Math.PI*2);
+    ctx.fillStyle='#C44B1B';ctx.fill();ctx.strokeStyle='#fff';ctx.lineWidth=2;ctx.stroke();
+    ctx.fillStyle='#fff';ctx.font='bold 10px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillText(String(i+1),px,py);
+    const lbl=(cp.desc||'').length>13?(cp.desc||'').slice(0,12)+'…':(cp.desc||'Post '+(i+1));
+    ctx.font='bold 9px sans-serif';ctx.textAlign='left';
+    ctx.strokeStyle='rgba(255,255,255,.88)';ctx.lineWidth=3;
+    ctx.strokeText(lbl,px+15,py+1);ctx.fillStyle='#111';ctx.fillText(lbl,px+15,py+1);
+  });
+
+  return canvas;
+}
+
+// ── ASSEMBLE PDF PAGE ────────────────────────────────────────────────────────
+// mapW_mm/mapH_mm: the exact printed dimensions of the map (= full area * scaleFactor)
+// targetDenom:    the exact scale (e.g. 10000 → 1:10.000)
+// Layout: thin header bar (8mm) at top, map fills the rest to bottom margin (5mm).
+// Scale bar + CP table are drawn directly on the map image (bottom strip).
+async function makePdfPage(pdf,isFirstPage,PW,PH,MG,mapImgData,mapW_mm,mapH_mm,cLat,tileZoom,targetDenom,routeRes,pageLabel){
+  if(!isFirstPage) pdf.addPage([PW,PH]);
+
+  const HDR=8;   // header height mm
+  const BOT=5;   // bottom margin mm
+  const mapY=HDR;
+  const availW=PW-2*MG;
+  const mapX=MG+(availW-mapW_mm)/2;
+
+  // ── HEADER BAR (slim, full width) ──
+  pdf.setFillColor(45,80,22);pdf.rect(0,0,PW,HDR,'F');
+  pdf.setTextColor(232,160,32);pdf.setFontSize(9);pdf.setFont('helvetica','bold');
+  pdf.text('ORIËNTATIELOOP'+(pageLabel?' — '+pageLabel:''),MG,5.8);
+  pdf.setFontSize(6.5);pdf.setTextColor(200,220,180);pdf.setFont('helvetica','normal');
+  pdf.text(`${routeRes.dist.toFixed(1)} km · ${routeRes.pts.length} posten · 1:${targetDenom.toLocaleString('nl')}`,PW-MG,5.8,{align:'right'});
+
+  // ── MAP IMAGE — fills page to bottom margin ──
+  pdf.addImage(mapImgData,'JPEG',mapX,mapY,mapW_mm,mapH_mm);
+  pdf.setDrawColor(45,80,22);pdf.setLineWidth(0.3);pdf.rect(mapX,mapY,mapW_mm,mapH_mm);
+
+  // ── FOOTER OVERLAY on map (bottom 16mm strip) ──
+  const stripH=16;
+  const stripY=mapY+mapH_mm-stripH;
+  // Semi-transparent white background
+  pdf.setFillColor(255,255,255);
+  pdf.setGState&&pdf.setGState(new pdf.GState({opacity:0.82}));
+  pdf.rect(mapX,stripY,mapW_mm,stripH,'F');
+  pdf.setGState&&pdf.setGState(new pdf.GState({opacity:1}));
+
+  // Scale bar
+  const mPmm=targetDenom/1000;
+  const niceM=[50,100,200,250,500,1000,2000,5000].find(v=>v/mPmm<40)||500;
+  const barMm=niceM/mPmm;
+  const bX=mapX+2, bY=stripY+3;
+  for(let i=0;i<4;i++){
+    pdf.setFillColor(i%2===0?30:220,i%2===0?90:220,i%2===0?30:220);
+    pdf.rect(bX+i*(barMm/4),bY,barMm/4,2,'F');
+  }
+  pdf.setDrawColor(60,60,60);pdf.setLineWidth(0.15);pdf.rect(bX,bY,barMm,2);
+  pdf.setFontSize(5.5);pdf.setTextColor(20,20,20);pdf.setFont('helvetica','normal');
+  pdf.text('0',bX,bY+5);
+  pdf.text(niceM>=1000?(niceM/1000)+' km':niceM+' m',bX+barMm,bY+5,{align:'center'});
+  pdf.setFont('helvetica','bold');pdf.setFontSize(6);
+  pdf.text(`1:${targetDenom.toLocaleString('nl')}`,bX,bY+10);
+  const gridM=targetDenom>150000?10000:targetDenom>75000?5000:targetDenom>30000?2000:1000;
+  pdf.setFont('helvetica','normal');pdf.setFontSize(5);pdf.setTextColor(60,60,60);
+  pdf.text(`Grid ${gridM>=1000?(gridM/1000)+'km':gridM+'m'} RD`,bX,bY+13.5);
+
+  // CP legend table (right of scale bar)
+  const tblX=bX+barMm+6;
+  const tblW=mapW_mm-(tblX-mapX)-2;
+  const nCp=routeRes.pts.length;
+  const colW=Math.min(tblW/Math.max(nCp,1),22);
+  routeRes.pts.forEach((pt,i)=>{
+    const cx=tblX+i*colW+colW/2;
+    if(cx>mapX+mapW_mm-2) return; // clip if too many
+    pdf.setFillColor(196,75,27);pdf.circle(cx,stripY+4,2.8,'F');
+    pdf.setTextColor(255,255,255);pdf.setFontSize(5.5);pdf.setFont('helvetica','bold');
+    pdf.text(String(i+1),cx,stripY+4.7,{align:'center'});
+    pdf.setTextColor(20,20,20);pdf.setFont('helvetica','normal');pdf.setFontSize(5);
+    const d=(pt.desc||'').length>8?(pt.desc||'').slice(0,7)+'…':(pt.desc||'');
+    pdf.text(d,cx,stripY+9,{align:'center'});
+    pdf.setDrawColor(100,100,100);pdf.setLineWidth(0.2);
+    pdf.rect(cx-3.5,stripY+10,7,3.5);
+  });
+
+  // Attribution (bottom-right, tiny)
+  pdf.setFontSize(4);pdf.setTextColor(80,80,80);
+  pdf.text('© OpenStreetMap | © OpenTopoMap (CC-BY-SA)',mapX+mapW_mm-1,mapY+mapH_mm-1,{align:'right'});
+}
+
+// ── MAIN PDF HANDLER ─────────────────────────────────────────────────────────
+$('pbtn').addEventListener('click',async()=>{
+  if(!routeRes)return;
+  $('pbtn').disabled=true;$('pbtn').textContent='⏳ Bezig…';
+  $('lov').classList.add('show');
+  setProgress(3,'Afmeting bepalen…');
+  await tick();
+
+  try{
+    const fmt=$('pformat').value;
+    const scv=$('scsel').value;
+    const routePts=[startLL,...routeRes.pts.map(p=>p.ll),startLL];
+    const lats=routePts.map(p=>p[0]),lons=routePts.map(p=>p[1]);
+    const minLat=Math.min(...lats),maxLat=Math.max(...lats);
+    const minLon=Math.min(...lons),maxLon=Math.max(...lons);
+    const cLat=(minLat+maxLat)/2,cLon=(minLon+maxLon)/2;
+
+    const MG=13;
+
+    if(fmt==='multi'){
+      // ── MULTI-PAGE MODE ───────────────────────────────────────────────────
+      const PW=297,PH=210;
+      const mapW_mm=PW-2*MG, mapH_mm=PH-8-5;
+      const CW=Math.round(mapW_mm*DPM), CH=Math.round(mapH_mm*DPM); // full page pixels
+
+      let tileZoom, actualDenom;
+      if(scv==='auto'){
+        const pad=1.3;
+        const mH=(maxLat-minLat)*pad*111320, mW=(maxLon-minLon)*pad*111320*Math.cos(cLat*Math.PI/180);
+        ({tileZoom,actualDenom}=autoZoom(cLat, Math.max(mH/CH, mW/CW)));
+      }else{
+        ({tileZoom,actualDenom}=bestZoomForTarget(cLat,parseInt(scv)));
+      }
+      tileZoom=Math.min(17,Math.max(10,tileZoom));
+      actualDenom=Math.round(scaleDenomAtZoom(cLat,tileZoom));
+
+      // Page coverage in metres = canvas pixels * mPerPx
+      const mpp=mPerPxAtZoom(cLat,tileZoom);
+      const pageW_m=CW*mpp, pageH_m=CH*mpp;
+      const totalW_m=(maxLon-minLon)*111320*Math.cos(cLat*Math.PI/180)*1.3;
+      const totalH_m=(maxLat-minLat)*111320*1.3;
+      const cols=Math.max(1,Math.ceil(totalW_m/pageW_m));
+      const rows=Math.max(1,Math.ceil(totalH_m/pageH_m));
+      const totalPages=cols*rows;
+
+      setProgress(5,`${totalPages} pagina's (${cols}×${rows}) — schaal 1:${actualDenom.toLocaleString('nl')}…`);await tick();
+
+      const{jsPDF}=window.jspdf;
+      const pdf=new jsPDF({orientation:'landscape',unit:'mm',format:'a4'});
+      let firstPage=true,pageNum=0;
+      const areaCLon=(minLon+maxLon)/2, areaCLat=(minLat+maxLat)/2;
+
+      for(let row=0;row<rows;row++) for(let col=0;col<cols;col++){
+        pageNum++;
+        const pageCLon=areaCLon+(col-(cols-1)/2)*pageW_m/(111320*Math.cos(cLat*Math.PI/180));
+        const pageCLat=areaCLat-(row-(rows-1)/2)*pageH_m/111320;
+        const pMinLat=pageCLat-pageH_m/2/111320, pMaxLat=pageCLat+pageH_m/2/111320;
+        const pMinLon=pageCLon-pageW_m/2/(111320*Math.cos(cLat*Math.PI/180));
+        const pMaxLon=pageCLon+pageW_m/2/(111320*Math.cos(cLat*Math.PI/180));
+        const tRef={total:1};
+        setProgress(5+Math.round((pageNum-1)/totalPages*60),`Pagina ${pageNum}/${totalPages}…`);await tick();
+        const mc=await buildMapCanvas(pageCLat,pageCLon,tileZoom,CW,CH,pMinLat,pMinLon,pMaxLat,pMaxLon,routePts,routeRes.pts,tRef);
+        await tick();
+        const imgD=mc.toDataURL('image/jpeg',.88);await tick();
+        if(!firstPage) pdf.addPage([PW,PH]);
+        firstPage=false;
+        await makePdfPage(pdf,true,PW,PH,MG,imgD,mapW_mm,mapH_mm,pageCLat,tileZoom,actualDenom,routeRes,`${row+1}-${col+1}`);
+        await tick();
+      }
+      setProgress(90,'PDF afronden…');await tick();
+      pdfUrl=pdf.output('datauristring');
+
+    }else{
+      // ── SINGLE PAGE ───────────────────────────────────────────────────────
+      const[PW,PH]=pageSize(fmt);
+      const mapW_mm=PW-2*MG, mapH_mm=PH-8-5;
+      const CW=Math.round(mapW_mm*DPM), CH=Math.round(mapH_mm*DPM); // full page pixels
+
+      let tileZoom, actualDenom;
+      if(scv==='auto'){
+        const pad=1.3;
+        const mH=(maxLat-minLat)*pad*111320, mW=(maxLon-minLon)*pad*111320*Math.cos(cLat*Math.PI/180);
+        ({tileZoom,actualDenom}=autoZoom(cLat, Math.max(mH/CH, mW/CW)));
+      }else{
+        ({tileZoom,actualDenom}=bestZoomForTarget(cLat,parseInt(scv)));
+      }
+      tileZoom=Math.min(17,Math.max(10,tileZoom));
+      actualDenom=Math.round(scaleDenomAtZoom(cLat,tileZoom));
+
+      setProgress(8,`Schaal 1:${actualDenom.toLocaleString('nl')} — zoom ${tileZoom} — tegels ophalen…`);await tick();
+      const tRef={total:1};
+      const mc=await buildMapCanvas(cLat,cLon,tileZoom,CW,CH,minLat,minLon,maxLat,maxLon,routePts,routeRes.pts,tRef);
+      setProgress(72,'Afbeelding omzetten…');await tick();
+      const imgD=mc.toDataURL('image/jpeg',.90);
+      setProgress(80,'PDF opmaken…');await tick();
+
+      const{jsPDF}=window.jspdf;
+      const isLandscape=PW>PH;
+      const fmt2=PW===420||PH===420?'a3':'a4';
+      const pdf=new jsPDF({orientation:isLandscape?'landscape':'portrait',unit:'mm',format:fmt2});
+      await makePdfPage(pdf,true,PW,PH,MG,imgD,mapW_mm,mapH_mm,cLat,tileZoom,actualDenom,routeRes,'');
+      setProgress(92,'Afronden…');await tick();
+      pdfUrl=pdf.output('datauristring');
+    }
+
+    setProgress(97,'Voorbeeld…');await tick();
+
+    const pi=new Image();
+    pi.onload=()=>{
+      const s=Math.min(window.innerWidth*.91/pi.width,window.innerHeight*.84/pi.height);
+      const c=$('pcanv');c.width=Math.round(pi.width*s);c.height=Math.round(pi.height*s);
+      c.getContext('2d').drawImage(pi,0,0,c.width,c.height);
+      $('lov').classList.remove('show');$('pov').classList.add('show');
+      setProgress(0,'');
+    };
+    pi.onerror=()=>{
+      $('lov').classList.remove('show');
+      const a=document.createElement('a');a.href=pdfUrl;a.download='orienteering_route.pdf';a.click();
+    };
+    pi.src=pdfUrl;
+
+  }catch(err){
+    $('lov').classList.remove('show');setProgress(0,'');
+    console.error(err);alert('PDF fout: '+err.message);
+  }
+  $('pbtn').disabled=false;$('pbtn').textContent='⬇ Genereer PDF';
+});
+
+$('dlbtn').addEventListener('click',()=>{
+  if(!pdfUrl)return;
+  const a=document.createElement('a');a.href=pdfUrl;a.download='orienteering_route.pdf';a.click();
+});
+$('clbtn').addEventListener('click',()=>$('pov').classList.remove('show'));
+</script>
+</body>
+</html>
