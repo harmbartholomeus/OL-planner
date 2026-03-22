@@ -169,7 +169,7 @@ input[type=range]{flex:1;accent-color:var(--moss);cursor:pointer;}
   <div class="s" id="dist-section">
     <div class="lbl"><span class="bdg">2</span> Afstand</div>
     <div class="slrow">
-      <input type="range" id="dsl" min="1" max="100" value="5" step="1">
+      <input type="range" id="dsl" min="1" max="50" value="5" step="1">
       <div class="slval"><span id="dv">5</span> km</div>
     </div>
     <p class="info" style="margin-top:4px">Selecteert posten voor ~<span id="dh">5</span> km.</p>
@@ -1572,12 +1572,7 @@ $('pbtn').addEventListener('click',async()=>{
 
 $('dlbtn').addEventListener('click',()=>{
   if(!pdfUrl)return;
-  const isIOS=/iPad|iPhone|iPod/.test(navigator.userAgent);
-  if(isIOS){
-    window.open(pdfUrl,'_blank');
-  }else{
-    const a=document.createElement('a');a.href=pdfUrl;a.download='orienteering_route.pdf';a.click();
-  }
+  window.open(pdfUrl,'_blank');
 });
 $('clbtn').addEventListener('click',()=>$('pov').classList.remove('show'));
 
