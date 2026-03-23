@@ -990,11 +990,11 @@ function genRoute(startPt,km){
   let s=Math.floor(Math.random()*1e9);
   const all=CPS.map(cp=>({...cp,ll:rd2wgs(cp.x,cp.y)}));
 
-  const lo=km*0.75, hi=km*1.25;
+  const lo=km*0.9, hi=km*1.5;
 
   // ── Step 1: filter to points within km*0.4 of start ──────────────────────
   // Beyond that radius a round trip uses >80% of budget just getting there and back.
-  const maxRadius=km*0.4;
+  const maxRadius=km*0.6;
   let pool=all.filter(p=>dst(startPt,p.ll)<=maxRadius);
   if(pool.length<3){
     pool=[...all].sort((a,b)=>dst(startPt,a.ll)-dst(startPt,b.ll)).slice(0,Math.min(8,all.length));
@@ -1007,30 +1007,36 @@ function genRoute(startPt,km){
 
   let sel=[],cur=startPt,totalDist=0,rem=pool.slice();
 
-  const minLeg=0.2; // minimaal 200m tussen punten
+  const minLeg=0.15; // minimaal 200m tussen punten
+  if (km>15){const minLeg=km*0.04}
+  if (km>15){const minLeg=km*0.01}
+  //const maxLeg=1
+ 
+  
   while(rem.length){
     const viable=rem
       .map(p=>({p, legD:dst(cur,p.ll), ret:dst(p.ll,startPt)}))
       .filter(({p,legD,ret})=>
         totalDist+legD+ret<=hi &&  // fits in budget
-        legD<=km*0.08 &&            // single leg niet meer dan 30% van route
-        legD>=minLeg               // minimaal 200m
+        legD<=km*0.10 &&            // single leg niet meer dan 30% van route
+        legD>=minLeg             // minimaal 200m
+       // legD<=maxLeg
       )
       .sort((a,b)=>a.legD-b.legD); // nearest first
 
     if(!viable.length) break;
 
-    const headingHome=totalDist>km*0.4;
+    const headingHome=totalDist>km*0.5;
     let candidates;
     if(headingHome){
       // Pick from points nearest to start (loop closing)
-      candidates=[...viable].sort((a,b)=>a.ret-b.ret).slice(0,6);
+      candidates=[...viable].sort((a,b)=>a.ret-b.ret).slice(0,5);
     } else {
       // Pure nearest-neighbour
-      candidates=viable.slice(0,6);
+      candidates=viable.slice(0,5);
     }
 
-    const weights=[6,2,1,1].slice(0,candidates.length);
+    const weights=[3,2,1,1].slice(0,candidates.length);
     const wSum=weights.reduce((a,b)=>a+b,0);
     let rv=rng(s+=1337)*wSum, pick=0;
     for(let i=0;i<candidates.length;i++){rv-=weights[i];if(rv<=0){pick=i;break;}}
