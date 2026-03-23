@@ -167,7 +167,7 @@ input[type=range]{flex:1;accent-color:var(--moss);cursor:pointer;}
 
   <!-- Step 2: Distance (auto only) -->
   <div class="s" id="dist-section">
-    <div class="lbl"><span class="bdg">2</span> Afstand</div>
+    <div class="lbl"><span class="bdg">2</span> Afstand (Hemelsbreed!)</div>
     <div class="slrow">
       <input type="range" id="dsl" min="1" max="50" value="5" step="1">
       <div class="slval"><span id="dv">5</span> km</div>
@@ -1084,7 +1084,7 @@ function genRoute(startPt,km){
   }
 
   // ── Step 5: if too long, remove least-important point ────────────────────
-  if(totalD>hi && sel.length>1){
+  if(totalD>1.15*hi && sel.length>1){
     let bestRemove=null, bestDelta=Infinity;
     for(let i=0;i<sel.length;i++){
       const d=routeTotalDist(sel.filter((_,j)=>j!==i),startPt);
