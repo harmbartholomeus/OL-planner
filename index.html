@@ -992,9 +992,9 @@ function genRoute(startPt,km){
 
   const lo=km*0.95, hi=km*1.5;
 
-  // ── Step 1: filter to points within km*0.4 of start ──────────────────────
-  // Beyond that radius a round trip uses >80% of budget just getting there and back.
-  const maxRadius=km*0.6;
+  // ── Step 1: filter to points within km*0.5 of start ──────────────────────
+  // Beyond that radius a round trip uses >100% of budget just getting there and back.
+  const maxRadius=km*0.5;
   let pool=all.filter(p=>dst(startPt,p.ll)<=maxRadius);
   if(pool.length<3){
     pool=[...all].sort((a,b)=>dst(startPt,a.ll)-dst(startPt,b.ll)).slice(0,Math.min(8,all.length));
@@ -1007,9 +1007,9 @@ function genRoute(startPt,km){
 
   let sel=[],cur=startPt,totalDist=0,rem=pool.slice();
 
-  const minLeg=0.15; // minimaal 200m tussen punten
-  if (km>15){const minLeg=km*0.04}
-  if (km>15){const minLeg=km*0.01}
+  const minLeg=0.15; // minimaal 150m tussen punten
+  if (km>10){const minLeg=km*0.04}
+  if (km>20){const minLeg=km*0.01}
   //const maxLeg=1
  
   
@@ -1026,7 +1026,7 @@ function genRoute(startPt,km){
 
     if(!viable.length) break;
 
-    const headingHome=totalDist>km*0.5;
+    const headingHome=totalDist>km*0.4;
     let candidates;
     if(headingHome){
       // Pick from points nearest to start (loop closing)
